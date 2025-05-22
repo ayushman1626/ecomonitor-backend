@@ -32,4 +32,9 @@ public class UserController {
             return new ResponseEntity<>("USER NOT FOUND", HttpStatus.NOT_FOUND);
         }
     }
+
+    @GetMapping
+    public ResponseEntity<String> helloWorld(){
+        return ResponseEntity.ok("Hello App is running ");
+    }
 }

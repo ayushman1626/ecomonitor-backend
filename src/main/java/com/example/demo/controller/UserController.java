@@ -33,7 +33,7 @@ public class UserController {
         }
     }
 
-    @GetMapping
+    @GetMapping("hello")
     public ResponseEntity<String> helloWorld(){
         return ResponseEntity.ok("Hello App is running ");
     }

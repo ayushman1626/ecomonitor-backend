@@ -8,6 +8,8 @@ import com.example.demo.model.Interface;
 import com.example.demo.model.User;
 import com.example.demo.model.UserPrinciple;
 import com.example.demo.service.InterfaceService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -21,14 +23,16 @@ import java.util.Map;
 import java.util.UUID;
 
 
-@RequestMapping("/api")
+@RequestMapping("/api/interface")
 @RestController
+@Tag(name = "Interface", description = "API endpoints for auth")
 public class InterfaceController {
 
     @Autowired
     InterfaceService interfaceService;
 
-    @PostMapping("/interfaces")
+    @PostMapping("")
+    @Operation(summary = "Create Interface")
     public ResponseEntity<ApiResponse<InterfaceDTO>> saveInterface(
             @RequestBody Interface iface,
             @AuthenticationPrincipal UserPrinciple userPrinciple) {
@@ -49,7 +53,8 @@ public class InterfaceController {
     }
 
 
-    @GetMapping("/interfaces")
+    @GetMapping("")
+    @Operation(summary = "Get Interface")
     public ResponseEntity<ApiResponse<?>> getInterfaces(@AuthenticationPrincipal UserPrinciple userPrinciple) {
 
         if (userPrinciple == null) {
@@ -69,7 +74,8 @@ public class InterfaceController {
         );
     }
 
-    @GetMapping("/interfaces/{interface_id}")
+    @GetMapping("/{interface_id}")
+    @Operation(summary = "Get Interface By Id")
     public ResponseEntity<ApiResponse<?>> getInterfaceById(
             @PathVariable("interface_id") UUID interfaceId,
             @AuthenticationPrincipal UserPrinciple userPrinciple

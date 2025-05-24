@@ -2,7 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.model.*;
 import com.example.demo.model.Dtos.DeviceDTO;
-import com.example.demo.model.Dtos.InterfaceDTO;
+import com.example.demo.model.Dtos.DeviceRequestDTO;
 import com.example.demo.model.enums.Role;
 import com.example.demo.repo.DeviceRepo;
 import com.example.demo.repo.InterfaceRepo;
@@ -16,9 +16,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class DeviceService {
@@ -35,7 +33,7 @@ public class DeviceService {
     @Autowired
     UserService userService;
 
-    public DeviceDTO createDevice(Device device, UUID interfaceId, String username)
+    public DeviceDTO createDevice(DeviceRequestDTO deviceRequest, UUID interfaceId, String username)
             throws EntityNotFoundException,AccessDeniedException{
 
         User currentUser = userService.getUserProfile2(username);
@@ -50,10 +48,14 @@ public class DeviceService {
         }
 
         //saving
-        device.setInterfaceEntity(interfaceEntity);
-        device.setCreatedAt(LocalDateTime.now());
-        device.setPlacementDate(LocalDate.now());
-        return new DeviceDTO(deviceRepo.save(device));
+        Device newDevice = new Device();
+        newDevice.setName(deviceRequest.getName());
+        newDevice.setLocation(deviceRequest.getLocation());
+        newDevice.setType(deviceRequest.getType());
+        newDevice.setInterfaceEntity(interfaceEntity);
+        newDevice.setCreatedAt(LocalDateTime.now());
+        newDevice.setPlacementDate(LocalDate.now());
+        return new DeviceDTO(deviceRepo.save(newDevice));
     }
 
     public List<DeviceDTO> getAllDevices(UserPrinciple userPrinciple) {

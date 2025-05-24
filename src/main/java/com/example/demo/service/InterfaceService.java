@@ -22,7 +22,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class InterfaceService {
-
     @Autowired
     UserService userService;
 
@@ -34,7 +33,6 @@ public class InterfaceService {
 
     @Autowired
     DeviceRepo deviceRepo;
-
 
 
     public List<InterfaceDTO> getInterfaceForUser(String username) throws UsernameNotFoundException {

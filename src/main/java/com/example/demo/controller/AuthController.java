@@ -4,6 +4,8 @@ import com.example.demo.model.Dtos.Auth.RegisterRequest;
 import com.example.demo.model.Dtos.Auth.RegistrationResponse;
 import com.example.demo.model.User;
 import com.example.demo.service.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -22,6 +24,7 @@ import java.util.Map;
 
 @RequestMapping("api/auth")
 @RestController
+@Tag(name = "Auth", description = "API endpoints for auth")
 public class AuthController {
 
     @Autowired
@@ -29,6 +32,7 @@ public class AuthController {
 
 
     @PostMapping("/register")
+    @Operation(summary = "Register user")
     public ResponseEntity<ApiResponse<Map<String, Object>>> registerUser(
             @Valid @RequestBody RegisterRequest request) {
 
@@ -53,6 +57,7 @@ public class AuthController {
     }
 
     @PostMapping("/register/verify-otp")
+    @Operation(summary = "Verify Otp")
     ResponseEntity<ApiResponse<Map<String, Object>>> verifyOtp(@RequestBody Map<String, String> input){
 
         RegistrationResponse response = authService.verifyOtp(input.get("email"), input.get("otp"));
@@ -71,6 +76,7 @@ public class AuthController {
         }
     }
     @PostMapping("/resend-otp")
+    @Operation(summary = "resend otp")
     ResponseEntity<?> resendOtp(@RequestBody Map<String, String> emailData) {
         try{
             String response = authService.resendOtp(emailData.get("email"));
@@ -82,6 +88,7 @@ public class AuthController {
 
 
     @PostMapping("/login")
+    @Operation(summary = "login")
     ResponseEntity<ApiResponse<Map<String, Object>>> login(
             @Valid @RequestBody LoginRequest request){
         LoginResponse response;
@@ -99,6 +106,7 @@ public class AuthController {
 
 
     @GetMapping("api/users")
+    @Operation(summary = "For dev")
     ResponseEntity<List<User>> getUsers(){
         return ResponseEntity.ok(authService.getUsers());
     }

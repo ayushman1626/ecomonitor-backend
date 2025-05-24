@@ -4,6 +4,8 @@ import com.example.demo.model.Dtos.InterfaceAccessDTO;
 import com.example.demo.model.UserPrinciple;
 import com.example.demo.service.AccessService;
 import com.example.demo.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,7 @@ import java.util.UUID;
 
 
 @RestController
+@Tag(name = "Access" , description = "API endpoint for Manage Access")
 public class AccessController {
 
     @Autowired
@@ -26,6 +29,7 @@ public class AccessController {
     private AccessService accessService;
 
     @PostMapping("api/interface/{interfaceId}/add-access")
+    @Operation(summary = "Give Access")
     public ResponseEntity<?> giveAccess(
             @RequestBody Map<String, String> input,
             @PathVariable UUID interfaceId,
@@ -52,6 +56,7 @@ public class AccessController {
     }
 
     @GetMapping("api/interface/{interfaceId}/access")
+    @Operation(summary = "Show given access of Interface")
     public ResponseEntity<?> showAccessesByInterface(
             @PathVariable UUID interfaceId,
             @AuthenticationPrincipal UserPrinciple userPrinciple

@@ -2,6 +2,7 @@ package com.example.demo.model.Dtos;
 
 
 import com.example.demo.model.Device;
+import com.example.demo.model.enums.DeviceType;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -11,7 +12,7 @@ import java.time.LocalDateTime;
 public class DeviceDTO {
     private String id;
     private String name;
-    private String type;
+    private DeviceType type;
     private String location;
     private BigDecimal lastValue;
     private LocalDateTime lastUpdated;
@@ -21,7 +22,7 @@ public class DeviceDTO {
     public DeviceDTO(Device device) {
         this.id = device.getId().toString();
         this.name = device.getName();
-        this.type = device.getType().name();
+        this.type = device.getType();
         this.location = device.getLocation();
         this.lastValue = device.getLastValue();
         this.lastUpdated = device.getLastUpdated();
@@ -45,11 +46,11 @@ public class DeviceDTO {
         this.name = name;
     }
 
-    public String getType() {
+    public DeviceType getType() {
         return type;
     }
 
-    public void setType(String type) {
+    public void setType(DeviceType type) {
         this.type = type;
     }
 

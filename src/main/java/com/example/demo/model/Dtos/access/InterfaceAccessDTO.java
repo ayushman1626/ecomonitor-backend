@@ -1,9 +1,7 @@
-package com.example.demo.model.Dtos;
+package com.example.demo.model.Dtos.access;
 
 import com.example.demo.model.User;
 import com.example.demo.model.enums.Role;
-
-import java.util.UUID;
 
 public class InterfaceAccessDTO {
     private String userId;

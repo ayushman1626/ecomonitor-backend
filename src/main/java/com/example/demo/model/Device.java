@@ -41,6 +41,9 @@ public class Device {
     @Column(name = "placement_date")
     private LocalDate placementDate;
 
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = false;
+
     @Column(name = "last_value", precision = 5, scale = 2)
     private BigDecimal lastValue;
 
@@ -122,6 +125,14 @@ public class Device {
         this.createdAt = createdAt;
     }
 
+    public Boolean getActive() {
+        return isActive;
+    }
+
+    public void setActive(Boolean active) {
+        isActive = active;
+    }
+
     @Override
     public String toString() {
         return "Device{" +
@@ -131,6 +142,7 @@ public class Device {
                 ", type=" + type +
                 ", location='" + location + '\'' +
                 ", placementDate=" + placementDate +
+                ", isActive=" + isActive +
                 ", lastValue=" + lastValue +
                 ", lastUpdated=" + lastUpdated +
                 ", createdAt=" + createdAt +

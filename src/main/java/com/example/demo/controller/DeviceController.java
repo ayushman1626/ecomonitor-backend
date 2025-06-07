@@ -55,4 +55,6 @@ public class DeviceController {
         return ResponseEntity.ok(new ApiResponse<>(
                 true, "All devices fetched successfully",devices));
     }
+
+
 }

@@ -75,15 +75,14 @@ public class AuthController {
                     new ApiResponse<>(true, response.getMessage(), responseData));
         }
     }
+
     @PostMapping("/resend-otp")
-    @Operation(summary = "resend otp")
-    ResponseEntity<?> resendOtp(@RequestBody Map<String, String> emailData) {
-        try{
-            String response = authService.resendOtp(emailData.get("email"));
-            return ResponseEntity.ok(response);
-        }catch (Exception e){
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    @Operation(summary = "Resend OTP")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> resendOtp(@RequestBody Map<String, String> emailData) {
+        String response = authService.resendOtp(emailData.get("email"));
+        Map<String, Object> responseData = new HashMap<>();
+        responseData.put("email", emailData.get("email"));
+        return ResponseEntity.ok(new ApiResponse<>(true, response, responseData));
     }
 
 

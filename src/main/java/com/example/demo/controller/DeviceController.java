@@ -1,14 +1,12 @@
 package com.example.demo.controller;
 
-import com.example.demo.model.Device;
-import com.example.demo.model.Dtos.DeviceDTO;
-import com.example.demo.model.Dtos.DeviceRequestDTO;
+import com.example.demo.model.Dtos.device.DeviceDTO;
+import com.example.demo.model.Dtos.device.DeviceRequestDTO;
 import com.example.demo.model.Dtos.common.ApiResponse;
 import com.example.demo.model.UserPrinciple;
 import com.example.demo.service.DeviceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.apache.coyote.Response;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,12 +14,11 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @RequestMapping("api/device")
 @RestController
-@Tag(name = "Device", description = "API endpoints for auth")
+@Tag(name = "Device", description = "API endpoints for Device")
 public class DeviceController {
 
     @Autowired
@@ -45,7 +42,7 @@ public class DeviceController {
     }
 
     @GetMapping("")
-    @Operation(summary = "get All Devices")
+    @Operation(summary = "Get All Devices")
     public ResponseEntity<ApiResponse<List<DeviceDTO>>> getDevices(
             @AuthenticationPrincipal UserPrinciple userPrinciple
     ){

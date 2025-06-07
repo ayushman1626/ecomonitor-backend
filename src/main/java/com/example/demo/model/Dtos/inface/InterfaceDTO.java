@@ -1,7 +1,6 @@
-package com.example.demo.model.Dtos;
+package com.example.demo.model.Dtos.inface;
 
 import com.example.demo.model.Interface;
-import com.example.demo.model.UserInterface;
 import lombok.Data;
 
 @Data

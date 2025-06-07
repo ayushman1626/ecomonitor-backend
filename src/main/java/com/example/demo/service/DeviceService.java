@@ -1,8 +1,8 @@
 package com.example.demo.service;
 
 import com.example.demo.model.*;
-import com.example.demo.model.Dtos.DeviceDTO;
-import com.example.demo.model.Dtos.DeviceRequestDTO;
+import com.example.demo.model.Dtos.device.DeviceDTO;
+import com.example.demo.model.Dtos.device.DeviceRequestDTO;
 import com.example.demo.model.enums.Role;
 import com.example.demo.repo.DeviceRepo;
 import com.example.demo.repo.InterfaceRepo;

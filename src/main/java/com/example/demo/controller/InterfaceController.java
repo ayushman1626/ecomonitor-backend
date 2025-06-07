@@ -1,21 +1,18 @@
 package com.example.demo.controller;
 
 
-import com.example.demo.model.Dtos.InterfaceDTO;
-import com.example.demo.model.Dtos.InterfaceWithDevicesDTO;
+import com.example.demo.model.Dtos.inface.InterfaceDTO;
+import com.example.demo.model.Dtos.inface.InterfaceWithDevicesDTO;
 import com.example.demo.model.Dtos.common.ApiResponse;
 import com.example.demo.model.Interface;
-import com.example.demo.model.User;
 import com.example.demo.model.UserPrinciple;
 import com.example.demo.service.InterfaceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,7 +22,7 @@ import java.util.UUID;
 
 @RequestMapping("/api/interface")
 @RestController
-@Tag(name = "Interface", description = "API endpoints for auth")
+@Tag(name = "Interface", description = "API endpoints for Interface")
 public class InterfaceController {
 
     @Autowired
@@ -55,7 +52,7 @@ public class InterfaceController {
 
     @GetMapping("")
     @Operation(summary = "Get Interface")
-    public ResponseEntity<ApiResponse<?>> getInterfaces(@AuthenticationPrincipal UserPrinciple userPrinciple) {
+    public ResponseEntity<ApiResponse<List<InterfaceDTO>>> getInterfaces(@AuthenticationPrincipal UserPrinciple userPrinciple) {
 
         if (userPrinciple == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)

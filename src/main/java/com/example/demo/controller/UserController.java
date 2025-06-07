@@ -20,7 +20,6 @@ public class UserController {
 
     @GetMapping("api/users/me")
     public ResponseEntity<?> getUserProfile(@AuthenticationPrincipal UserPrinciple userPrinciple){
-
         if(userPrinciple == null){
             return new ResponseEntity<>("UNAUTHORIZED USER!!", HttpStatus.UNAUTHORIZED);
         }

@@ -1,4 +1,4 @@
-package com.example.demo.model.Dtos;
+package com.example.demo.model.Dtos.device;
 
 
 import com.example.demo.model.Device;

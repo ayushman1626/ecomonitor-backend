@@ -1,12 +1,9 @@
-package com.example.demo.model.Dtos;
+package com.example.demo.model.Dtos.inface;
 
 import com.example.demo.model.Device;
-import com.example.demo.model.enums.DeviceType;
+import com.example.demo.model.Dtos.device.DeviceDTO;
 import com.example.demo.model.Interface;
-import lombok.Data;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 

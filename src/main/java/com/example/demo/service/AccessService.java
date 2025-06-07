@@ -1,14 +1,14 @@
 package com.example.demo.service;
 
-import com.example.demo.model.Dtos.InterfaceAccessDTO;
+import com.example.demo.model.Dtos.access.InterfaceAccessDTO;
 import com.example.demo.model.Interface;
 import com.example.demo.model.User;
 import com.example.demo.model.UserInterface;
 import com.example.demo.model.enums.Role;
 import com.example.demo.repo.InterfaceRepo;
 import com.example.demo.repo.UserInterfaceRepo;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.AccessDeniedException;
@@ -29,6 +29,7 @@ public class AccessService {
     @Autowired
     UserInterfaceRepo userInterfaceRepo;
 
+    @Transactional
     public Boolean giveAccess(UUID interfaceId, String username, String role , String currentUserUsername) throws AccessDeniedException{
         User currentUser = userService.getUserProfile2(currentUserUsername);
         User newUser = userService.getUserProfile2(username);

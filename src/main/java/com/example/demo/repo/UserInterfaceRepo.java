@@ -16,4 +16,6 @@ public interface UserInterfaceRepo extends JpaRepository<UserInterface, UserInte
     Optional<List<UserInterface>> findByUser(User user);
     Optional<UserInterface> findByUserAndInterfaceId(User user, Interface interfaceEntity);
     List<UserInterface> findByInterfaceId(Interface interfaceEntity);
+
+    void deleteAllByInterfaceId(Interface iface);
 }

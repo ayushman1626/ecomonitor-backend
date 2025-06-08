@@ -14,4 +14,5 @@ public interface DeviceRepo extends JpaRepository<Device, UUID> {
     List<Device> findByInterfaceEntityIn(List<Interface> interfaces);
 
 
+    void deleteAllByInterfaceEntity(Interface iface);
 }

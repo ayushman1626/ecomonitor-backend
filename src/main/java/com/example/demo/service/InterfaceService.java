@@ -11,6 +11,8 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -33,6 +35,8 @@ public class InterfaceService {
 
     @Autowired
     DeviceRepo deviceRepo;
+
+    BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
 
 
     public List<InterfaceDTO> getInterfaceForUser(String username) throws UsernameNotFoundException {
@@ -74,6 +78,33 @@ public class InterfaceService {
                 .orElseThrow(() -> new EntityNotFoundException("Interface not found"));
 
         return new InterfaceWithDevicesDTO(interfaceEntity, devices, userInterface.getRole().name());
+    }
+
+    @Transactional
+    public void deleteInterface(UUID interfaceId, String username, String password) {
+        Interface iface = interfaceRepo.findById(interfaceId)
+                .orElseThrow(() -> new RuntimeException("Interface not found"));
+
+        if (iface.getCreatedBy() == null || !iface.getCreatedBy().getUsername().equals(username)) {
+            throw new RuntimeException("Unauthorized to delete this interface");
+        }
+
+        // Validate password
+        User user = userService.getUserProfile2(username);
+        if (!encoder.matches(password, user.getPassword())) {
+            throw new RuntimeException("Invalid password");
+        }
+
+        // Delete all devices linked to this interface
+        deviceRepo.deleteAllByInterfaceEntity(iface);
+
+        //Delete User Interface Access
+        userInterfaceRepo.deleteAllByInterfaceId(iface);
+
+        // Delete the interface
+        interfaceRepo.delete(iface);
+
+
     }
 
 

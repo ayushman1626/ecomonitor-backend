@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 
 
+import com.example.demo.model.Dtos.inface.DeleteInterfaceRequest;
 import com.example.demo.model.Dtos.inface.InterfaceDTO;
 import com.example.demo.model.Dtos.inface.InterfaceWithDevicesDTO;
 import com.example.demo.model.Dtos.common.ApiResponse;
@@ -84,5 +85,20 @@ public class InterfaceController {
         InterfaceWithDevicesDTO response = interfaceService.getInterfaceWithDevices(interfaceId,userPrinciple.getUsername());
         return ResponseEntity.status(HttpStatus.OK)
                     .body(new ApiResponse<>(true, "Interface fetched successfully", response));
+    }
+
+    @DeleteMapping("/{interface_id}")
+    @Operation(summary = "Delete Interface By Id (with password)")
+    public ResponseEntity<ApiResponse<Void>> deleteInterface(
+            @PathVariable("interface_id") UUID interfaceId,
+            @RequestBody DeleteInterfaceRequest request,
+            @AuthenticationPrincipal UserPrinciple userPrinciple
+    ) {
+        if (userPrinciple == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<>(false, "User not authenticated.", null));
+        }
+        interfaceService.deleteInterface(interfaceId, userPrinciple.getUsername(), request.getPassword());
+        return ResponseEntity.ok(new ApiResponse<>(true, "Interface and devices deleted successfully", null));
     }
 }

@@ -24,4 +24,6 @@ public interface UserRepo extends JpaRepository<User, UUID> {
     Optional<User> findLatestByEmail(@Param("email") String email);
 
     List<User> findByIsVerifiedTrue();
+
+    List<User> findTop10ByUsernameStartingWithAndIsVerifiedTrue(String prefix);
 }

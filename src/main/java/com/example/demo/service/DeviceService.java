@@ -1,11 +1,13 @@
 package com.example.demo.service;
 
 import com.example.demo.model.*;
+import com.example.demo.model.Dtos.SensorReadingDTO;
 import com.example.demo.model.Dtos.device.DeviceDTO;
 import com.example.demo.model.Dtos.device.DeviceRequestDTO;
 import com.example.demo.model.enums.Role;
 import com.example.demo.repo.DeviceRepo;
 import com.example.demo.repo.InterfaceRepo;
+import com.example.demo.repo.SensorReadingRepo;
 import com.example.demo.repo.UserInterfaceRepo;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +34,9 @@ public class DeviceService {
 
     @Autowired
     UserService userService;
+
+    @Autowired
+    SensorReadingRepo sensorReadingRepo;
 
     public DeviceDTO createDevice(DeviceRequestDTO deviceRequest, UUID interfaceId, String username)
             throws EntityNotFoundException,AccessDeniedException{
@@ -80,4 +85,63 @@ public class DeviceService {
                 .toList();
     }
 
+    public DeviceDTO getDeviceById(UUID deviceId, String username)
+    throws Exception {
+        User user = userService.getUserProfile2(username);
+        boolean hasAccess = userHasAccessToDevice(user, deviceId);
+        if(!hasAccess) {
+            throw new AccessDeniedException("You do not have access to this device.");
+        }
+
+        Device device = deviceRepo.findById(deviceId)
+                .orElseThrow(() -> new EntityNotFoundException("Device not found"));
+        return new DeviceDTO(device);
+    }
+
+    //Check if user has access to a device
+    public boolean userHasAccessToDevice(User user, UUID deviceId) {
+        List<UserInterface> userInterfaces = userInterfaceRepo.findByUser(user)
+                .orElse(Collections.emptyList());
+        if (userInterfaces.isEmpty()) {
+            return false;
+        }
+        List<Interface> interfaces = userInterfaces.stream()
+                .map(UserInterface::getInterfaceId)
+                .toList();
+        return deviceRepo.existsByIdAndInterfaceEntityIn(deviceId, interfaces);
+    }
+
+    // Get device readings for the last 'days' days or 'hours' hours
+    public List<SensorReadingDTO> getDeviceReadings(UUID deviceId, String username, Integer days, Integer hours) throws AccessDeniedException {
+        User user = userService.getUserProfile2(username);
+        Device sensor = deviceRepo.findById(deviceId)
+                .orElseThrow(() -> new EntityNotFoundException("Device not found"));
+
+        boolean hasAccess = userHasAccessToDevice(user, deviceId);
+
+        if(!hasAccess) {
+            throw new AccessDeniedException("You do not have access to this device.");
+        }
+        LocalDateTime fromDate;
+        if (hours != null) {
+            fromDate = LocalDateTime.now().minusHours(hours);
+        } else if (days != null) {
+            fromDate = LocalDateTime.now().minusDays(days);
+        } else {
+            // default to 1 day if neither is provided (optional)
+            fromDate = LocalDateTime.now().minusDays(1);
+        }
+
+
+        List<SensorReading> readings = sensorReadingRepo.findBySensorAndFromDate(sensor, fromDate);
+        if(readings == null || readings.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return readings.stream()
+                .map(reading -> new SensorReadingDTO(
+                        reading.getSensor().getId().toString(),
+                        reading.getValue().toString(),
+                        reading.getRecordedAt().toString()))
+                .toList();
+    }
 }

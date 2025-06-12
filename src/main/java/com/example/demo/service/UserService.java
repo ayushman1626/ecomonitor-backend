@@ -27,8 +27,10 @@ public class UserService {
         return user;
     }
 
-    public List<UserDTO> searchUsers(String prefix) {
-        List<User> users = repo.findTop10ByUsernameStartingWithAndIsVerifiedTrue(prefix);
+    public List<UserDTO> searchUsers(String prefix, String currentUsername) {
+        List<User> users = repo.findTop10ByUsernameStartingWithAndIsVerifiedTrue(prefix).stream()
+                .filter(user -> !user.getUsername().equals(currentUsername))
+                .toList();
         if (users.isEmpty()) {
             return List.of(); // Return empty list if no users found
         }

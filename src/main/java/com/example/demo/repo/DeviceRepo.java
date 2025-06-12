@@ -2,8 +2,10 @@ package com.example.demo.repo;
 
 import com.example.demo.model.Device;
 import com.example.demo.model.Interface;
+import com.example.demo.model.SensorReading;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,4 +17,9 @@ public interface DeviceRepo extends JpaRepository<Device, UUID> {
 
 
     void deleteAllByInterfaceEntity(Interface iface);
+
+    void deleteById(UUID deviceId);
+
+    boolean existsByIdAndInterfaceEntityIn(UUID deviceId, List<Interface> interfaces);
+
 }

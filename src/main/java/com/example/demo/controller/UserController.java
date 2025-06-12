@@ -50,7 +50,8 @@ public class UserController {
             return ResponseEntity.badRequest()
                     .body(new ApiResponse<>(false, "Search prefix cannot be empty", null));
 
-        List<UserDTO> users = userService.searchUsers(prefix);
+
+        List<UserDTO> users = userService.searchUsers(prefix,userPrinciple.getUsername());
 
         if (users.isEmpty()) {
             return ResponseEntity.ok(new ApiResponse<>(true, "No users found", users));

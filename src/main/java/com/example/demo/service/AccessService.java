@@ -35,6 +35,10 @@ public class AccessService {
         User newUser = userService.getUserProfile2(username);
         Interface interfaceEntity = interfaceRepo.getReferenceById(interfaceId);
 
+        //Checking if the new user is owner of the interface or not if so throw exception stating can't modify access
+        if (newUser.getId().equals(interfaceEntity.getCreatedBy().getId())) {
+            throw new IllegalStateException("You can't modify access of the owner of the interface");
+        }
         //checking if the current user has admin access
         UserInterface userInterface = userInterfaceRepo
                 .findByUserAndInterfaceId(currentUser, interfaceEntity)
@@ -48,7 +52,8 @@ public class AccessService {
         Optional<UserInterface> existingAccess = userInterfaceRepo
                 .findByUserAndInterfaceId(newUser, interfaceEntity);
 
-        if(existingAccess.isPresent()){
+        if(existingAccess.isPresent() && existingAccess.get().getRole().equals(
+                role.equalsIgnoreCase("ADMIN")?Role.ADMIN: Role.VIEWER)){
             throw new IllegalStateException("User already has Access");
         }
 

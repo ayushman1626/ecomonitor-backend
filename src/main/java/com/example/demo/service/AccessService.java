@@ -9,9 +9,11 @@ import com.example.demo.repo.InterfaceRepo;
 import com.example.demo.repo.UserInterfaceRepo;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.AccessDeniedException;
+import java.nio.file.attribute.UserPrincipal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -37,8 +39,9 @@ public class AccessService {
 
         //Checking if the new user is owner of the interface or not if so throw exception stating can't modify access
         if (newUser.getId().equals(interfaceEntity.getCreatedBy().getId())) {
-            throw new IllegalStateException("You can't modify access of the owner of the interface");
+            throw new AccessDeniedException("You can't modify access of the owner of the interface");
         }
+
         //checking if the current user has admin access
         UserInterface userInterface = userInterfaceRepo
                 .findByUserAndInterfaceId(currentUser, interfaceEntity)
@@ -83,5 +86,39 @@ public class AccessService {
         return accessList.stream()
                 .map(ui -> new InterfaceAccessDTO(ui.getUser(),ui.getRole()))
                 .collect(Collectors.toList());
+    }
+
+    //revoke access
+    @Transactional
+    public Boolean revokeAccess(UUID interfaceId, String username, String currentUserUsername) throws AccessDeniedException {
+        User currentUser = userService.getUserProfile2(currentUserUsername);
+        User newUser = userService.getUserProfile2(username);
+        Interface interfaceEntity = interfaceRepo.getReferenceById(interfaceId);
+
+        //checking if the new user is owner of the interface or not if so throw exception stating can't modify access
+        if (newUser.getId().equals(interfaceEntity.getCreatedBy().getId())) {
+            throw new AccessDeniedException("You can't modify access of the owner of the interface");
+        }
+
+        //checking if the current user has admin access
+        UserInterface userInterface = userInterfaceRepo
+                .findByUserAndInterfaceId(currentUser, interfaceEntity)
+                .orElseThrow(() -> new AccessDeniedException("Access denied to this interface"));
+
+        if (!userInterface.getRole().equals(Role.ADMIN)) {
+            throw new AccessDeniedException("Only ADMIN can revoke access for this interface");
+        }
+
+        //checking if user has access of the Interface already
+        Optional<UserInterface> existingAccess = userInterfaceRepo
+                .findByUserAndInterfaceId(newUser, interfaceEntity);
+
+        if(existingAccess.isEmpty()){
+            throw new IllegalStateException("User doesn't have Access");
+        }
+
+        //deleting
+        userInterfaceRepo.delete(existingAccess.get());
+        return true;
     }
 }

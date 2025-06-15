@@ -2,6 +2,8 @@ package com.example.demo.service;
 
 import com.example.demo.model.User;
 import com.example.demo.repo.UserRepo;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
@@ -18,10 +20,10 @@ public class OtpService {
 
 
      //Generate OTP, save it to the database with expiration, and send via email
-
+    @Transactional
     public String generateAndSendOtp(String email, String subject) throws RuntimeException{
         User user = userRepository.findLatestByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
         String otp = generateOtp();
         user.setOtp(otp);
         user.setOtpExpiration(LocalDateTime.now().plusMinutes(5)); // OTP valid for 5 minutes

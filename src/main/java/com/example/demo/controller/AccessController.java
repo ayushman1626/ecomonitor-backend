@@ -63,4 +63,22 @@ public class AccessController {
         List<InterfaceAccessDTO> accessList = accessService.getAllAccess(interfaceId,userPrinciple.getUsername());
         return new ResponseEntity<>(new ApiResponse<>(true,"All access fetched successfully",accessList),HttpStatus.OK);
     }
+
+    @DeleteMapping("api/interface/{interfaceId}/access/{username}")
+    @Operation(summary = "Remove Access")
+    public ResponseEntity<ApiResponse<?>> removeAccess(
+            @PathVariable UUID interfaceId,
+            @PathVariable String username,
+            @AuthenticationPrincipal UserPrinciple userPrinciple
+    ) throws AccessDeniedException {
+        if(userPrinciple == null){
+            return new ResponseEntity<>(
+                    new ApiResponse<>(false,"UNAUTHENTICATED",null), HttpStatus.UNAUTHORIZED);
+        }
+
+        Boolean accessRemoved = accessService.revokeAccess(interfaceId, username, userPrinciple.getUsername());
+        return new ResponseEntity<>(
+                new ApiResponse<>(true,"Access removed successfully",null),
+                HttpStatus.OK);
+    }
 }

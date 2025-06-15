@@ -14,6 +14,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -80,7 +81,7 @@ public class AuthService {
 
     public String resendOtp(String email){
         User user = userRepo.findLatestByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         return otpService.generateAndSendOtp(user.getEmail(),"Verify your email");
     }
 
@@ -92,7 +93,6 @@ public class AuthService {
                 new BadCredentialsException("NO VERIFIED USER FOUND WITH THAT EMAIL")
         );
 
-        System.out.println(request);
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
@@ -105,9 +105,17 @@ public class AuthService {
         data.put("token",token);
         data.put("email", user.getEmail());
         data.put("fullName",user.getFullName());
+        data.put("username",user.getUsername());
         data.put("id",user.getId().toString());
 
         return new LoginResponse(data,true,"Login successful");
+    }
+
+    //Forgot Password
+    public String forgotPassword(String email) {
+        User user = userRepo.findLatestByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return otpService.generateAndSendOtp(user.getEmail(), "Reset your password");
     }
 
     public List<User> getUsers(){

@@ -38,6 +38,8 @@ public class DeviceService {
     @Autowired
     SensorReadingRepo sensorReadingRepo;
 
+
+
     public DeviceDTO createDevice(DeviceRequestDTO deviceRequest, UUID interfaceId, String username)
             throws EntityNotFoundException,AccessDeniedException{
 
@@ -98,19 +100,6 @@ public class DeviceService {
         return new DeviceDTO(device);
     }
 
-    //Check if user has access to a device
-    public boolean userHasAccessToDevice(User user, UUID deviceId) {
-        List<UserInterface> userInterfaces = userInterfaceRepo.findByUser(user)
-                .orElse(Collections.emptyList());
-        if (userInterfaces.isEmpty()) {
-            return false;
-        }
-        List<Interface> interfaces = userInterfaces.stream()
-                .map(UserInterface::getInterfaceId)
-                .toList();
-        return deviceRepo.existsByIdAndInterfaceEntityIn(deviceId, interfaces);
-    }
-
     // Get device readings for the last 'days' days or 'hours' hours
     public List<SensorReadingDTO> getDeviceReadings(UUID deviceId, String username, Integer days, Integer hours) throws AccessDeniedException {
         User user = userService.getUserProfile2(username);
@@ -131,8 +120,7 @@ public class DeviceService {
             // default to 1 day if neither is provided (optional)
             fromDate = LocalDateTime.now().minusDays(1);
         }
-
-
+        // Fetch sensor readings from the repository
         List<SensorReading> readings = sensorReadingRepo.findBySensorAndFromDate(sensor, fromDate);
         if(readings == null || readings.isEmpty()) {
             return Collections.emptyList();
@@ -143,5 +131,46 @@ public class DeviceService {
                         reading.getValue().toString(),
                         reading.getRecordedAt().toString()))
                 .toList();
+    }
+
+    // Method to delete a device
+    public void deleteDevice(UUID deviceId, String username) throws AccessDeniedException {
+        User user = userService.getUserProfile2(username);
+        Device device = deviceRepo.findById(deviceId)
+                .orElseThrow(() -> new EntityNotFoundException("Device not found"));
+
+        // Check if the user has access to the device
+        boolean hasAdminAccess = userHasAdminAccessToDevice(user, deviceId);
+
+        if (!hasAdminAccess) {
+            throw new AccessDeniedException("You do not have access to delete this device.");
+        }
+        // Delete the device
+        deviceRepo.delete(device);
+    }
+
+    //Check if user(checked) has access to a device
+    public boolean userHasAccessToDevice(User user, UUID deviceId) {
+        List<UserInterface> userInterfaces = userInterfaceRepo.findByUser(user)
+                .orElse(Collections.emptyList());
+        if (userInterfaces.isEmpty()) {
+            return false;
+        }
+        List<Interface> interfaces = userInterfaces.stream()
+                .map(UserInterface::getInterfaceId)
+                .toList();
+        return deviceRepo.existsByIdAndInterfaceEntityIn(deviceId, interfaces);
+    }
+
+    //check if user(checked) has ADMIN access to a device
+    public boolean userHasAdminAccessToDevice(User user, UUID deviceId) throws AccessDeniedException {
+        Device device = deviceRepo.findById(deviceId)
+                .orElseThrow(() -> new EntityNotFoundException("Device not found"));
+        Interface interfaceEntity = device.getInterfaceEntity();
+        UserInterface userInterface = userInterfaceRepo
+                .findByUserAndInterfaceId(user, interfaceEntity)
+                .orElseThrow(() -> new AccessDeniedException("No access to this interface"));
+
+        return userInterface.getRole().equals(Role.ADMIN);
     }
 }

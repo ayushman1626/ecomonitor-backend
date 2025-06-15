@@ -58,6 +58,25 @@ public class DeviceController {
     }
 
 
+
+
+
+    //Get all devices for the authenticated user
+    @GetMapping("")
+    @Operation(summary = "Get All Devices")
+    public ResponseEntity<ApiResponse<List<DeviceDTO>>> getDevices(
+            @AuthenticationPrincipal UserPrinciple userPrinciple
+    ){
+        if(userPrinciple == null){
+            return new ResponseEntity<>(new ApiResponse<>(false,"UNAUTHENTICATED",null), HttpStatus.UNAUTHORIZED);
+        }
+
+        List<DeviceDTO> devices = deviceService.getAllDevices(userPrinciple);
+
+        return ResponseEntity.ok(new ApiResponse<>(
+                true, "All devices fetched successfully",devices));
+    }
+
     //Get sensor reading from date
     @GetMapping("/{deviceId}/readings")
     @Operation(summary = "Get Device Sensor Readings")
@@ -77,24 +96,6 @@ public class DeviceController {
         return ResponseEntity.ok(new ApiResponse<>(
                 true, "Device readings fetched successfully", readings));
     }
-
-
-    //Get all devices for the authenticated user
-    @GetMapping("")
-    @Operation(summary = "Get All Devices")
-    public ResponseEntity<ApiResponse<List<DeviceDTO>>> getDevices(
-            @AuthenticationPrincipal UserPrinciple userPrinciple
-    ){
-        if(userPrinciple == null){
-            return new ResponseEntity<>(new ApiResponse<>(false,"UNAUTHENTICATED",null), HttpStatus.UNAUTHORIZED);
-        }
-
-        List<DeviceDTO> devices = deviceService.getAllDevices(userPrinciple);
-
-        return ResponseEntity.ok(new ApiResponse<>(
-                true, "All devices fetched successfully",devices));
-    }
-
 
     //SSE endpoint to give sensor data updates
     @GetMapping(value = "/{deviceId}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -128,5 +129,19 @@ public class DeviceController {
             logger.error("Error streaming device data for ID: {}", deviceId, e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error streaming device data");
         }
+    }
+
+    //Delete a device by ID
+    @DeleteMapping("/{deviceId}")
+    @Operation(summary = "Delete Device")
+    public ResponseEntity<ApiResponse<String>> deleteDevice(
+            @PathVariable UUID deviceId,
+            @AuthenticationPrincipal UserPrinciple userPrinciple
+    ) throws Exception {
+        if(userPrinciple == null){
+            return new ResponseEntity<>(new ApiResponse<>(false,"UNAUTHENTICATED",null), HttpStatus.UNAUTHORIZED);
+        }
+        deviceService.deleteDevice(deviceId, userPrinciple.getUsername());
+        return ResponseEntity.ok(new ApiResponse<>(true, "Device deleted successfully", null));
     }
 }

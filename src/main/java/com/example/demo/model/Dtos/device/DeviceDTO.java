@@ -16,6 +16,7 @@ public class DeviceDTO {
     private String location;
     private BigDecimal lastValue;
     private LocalDateTime lastUpdated;
+    private String onlineStatus;
     private String interfaceId;
     private String interfaceName;
 
@@ -28,6 +29,7 @@ public class DeviceDTO {
         this.lastUpdated = device.getLastUpdated();
         this.interfaceId = device.getInterfaceEntity().getId().toString();
         this.interfaceName = device.getInterfaceEntity().getName();
+        this.onlineStatus = device.getActive() ? "Online" : "Offline";
     }
 
     public String getId() {
@@ -94,6 +96,13 @@ public class DeviceDTO {
         this.interfaceName = interfaceName;
     }
 
+    public String getOnlineStatus() {
+        return onlineStatus;
+    }
+    public void setOnlineStatus(String isActive) {
+        this.onlineStatus = isActive;
+    }
+
     @Override
     public String toString() {
         return "DeviceDTO{" +
@@ -105,6 +114,7 @@ public class DeviceDTO {
                 ", lastUpdated=" + lastUpdated +
                 ", interfaceId='" + interfaceId + '\'' +
                 ", interfaceName='" + interfaceName + '\'' +
+                ", isActive='" + onlineStatus + '\'' +
                 '}';
     }
 }

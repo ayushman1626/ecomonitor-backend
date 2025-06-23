@@ -77,6 +77,24 @@ public class DeviceController {
                 true, "All devices fetched successfully",devices));
     }
 
+    //Get device by id
+    @GetMapping("/{deviceId}")
+    @Operation(summary = "Get Device by ID")
+    public ResponseEntity<ApiResponse<DeviceDTO>> getDeviceById(
+            @PathVariable UUID deviceId,
+            @AuthenticationPrincipal UserPrinciple userPrinciple
+    ) throws Exception {
+        if(userPrinciple == null){
+            return new ResponseEntity<>(new ApiResponse<>(false,"UNAUTHENTICATED",null), HttpStatus.UNAUTHORIZED);
+        }
+        DeviceDTO device = deviceService.getDeviceById(deviceId, userPrinciple.getUsername());
+        if (device == null) {
+            return new ResponseEntity<>(new ApiResponse<>(false, "Device not found", null), HttpStatus.NOT_FOUND);
+        }
+        return ResponseEntity.ok(new ApiResponse<>(
+                true, "Device fetched successfully", device));
+    }
+
     //Get sensor reading from date
     @GetMapping("/{deviceId}/readings")
     @Operation(summary = "Get Device Sensor Readings")

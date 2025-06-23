@@ -1,10 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.exceptions.UserAlreadyExistsException;
-import com.example.demo.model.Dtos.Auth.LoginRequest;
-import com.example.demo.model.Dtos.Auth.LoginResponse;
-import com.example.demo.model.Dtos.Auth.RegisterRequest;
-import com.example.demo.model.Dtos.Auth.RegistrationResponse;
+import com.example.demo.model.Dtos.Auth.*;
 import com.example.demo.model.User;
 import com.example.demo.repo.UserRepo;
 import com.example.demo.utils.JwtUtil;
@@ -111,14 +108,34 @@ public class AuthService {
         return new LoginResponse(data,true,"Login successful");
     }
 
-    //Forgot Password
-    public String forgotPassword(String email) {
+    public List<User> getUsers(){
+        return userRepo.findByIsVerifiedTrue();
+    }
+
+    // Forget Password
+    public String forgetPassword(String email) {
         User user = userRepo.findLatestByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         return otpService.generateAndSendOtp(user.getEmail(), "Reset your password");
     }
 
-    public List<User> getUsers(){
-        return userRepo.findByIsVerifiedTrue();
+    // Reset Password
+    public void resetPassword(ResetPasswordRequest request) {
+        User user = userRepo.findLatestByEmail(request.getEmail())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        if (request.getOtp() != null) {
+            if (!otpService.verifyOtp(user.getEmail(), request.getOtp())) {
+                throw new BadCredentialsException("Invalid or expired OTP");
+            }
+        } else if (request.getOldPassword() != null) {
+            if (!encoder.matches(request.getOldPassword(), user.getPassword())) {
+                throw new BadCredentialsException("Old password is incorrect");
+            }
+        } else {
+            throw new BadCredentialsException("Either OTP or Old Password must be provided");
+        }
+        user.setPassword(encoder.encode(request.getNewPassword()));
+        userRepo.save(user);
     }
 }

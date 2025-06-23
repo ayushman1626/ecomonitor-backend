@@ -1,7 +1,6 @@
 package com.example.demo.controller;
 
-import com.example.demo.model.Dtos.Auth.RegisterRequest;
-import com.example.demo.model.Dtos.Auth.RegistrationResponse;
+import com.example.demo.model.Dtos.Auth.*;
 import com.example.demo.model.User;
 import com.example.demo.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,8 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.*;
 import com.example.demo.model.Dtos.common.ApiResponse;
-import com.example.demo.model.Dtos.Auth.LoginRequest;
-import com.example.demo.model.Dtos.Auth.LoginResponse;
 
 
 import java.util.HashMap;
@@ -97,7 +94,31 @@ public class AuthController {
                 new ApiResponse<>(true, response.getMessage(), response.getData()));
     }
     //forget-password
-    //change-password
+    @PostMapping("/forget-password")
+    @Operation(summary = "Forget Password")
+    ResponseEntity<ApiResponse<Map<String, Object>>> forgetPassword(@RequestBody Map<String, String> input) {
+        if (input.get("email") == null || input.get("email").isEmpty()) {
+            return ResponseEntity.badRequest().body(
+                    new ApiResponse<>(false, "Email is required", null));
+        }
+        String response = authService.forgetPassword(input.get("email"));
+        Map<String, Object> responseData = new HashMap<>();
+        responseData.put("email", input.get("email"));
+        return ResponseEntity.ok(new ApiResponse<>(true, response, responseData));
+    }
+    //reset-password with otp or old password
+    @PostMapping("/reset-password")
+    @Operation(summary = "Reset Password")
+    ResponseEntity<ApiResponse<ResetPasswordRequest>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request) {
+        if(request.getOtp() == null && request.getOldPassword() == null) {
+            return ResponseEntity.badRequest().body(
+                    new ApiResponse<>(false, "Either OTP or Old Password must be provided", null));
+        }
+
+        authService.resetPassword(request);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Password reset successful", request));
+    }
 
 
 

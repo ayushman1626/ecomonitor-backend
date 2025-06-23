@@ -51,6 +51,7 @@ public class SecurityConfig {
                                 "api/auth/register",
                                 "api/auth/login",
                                 "api/auth/register/verify-otp",
+                                "api/auth/google-login",
                                 "api/auth/resend-otp",
                                 "hello",
                                 "/v3/api-docs/**",

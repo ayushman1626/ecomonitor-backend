@@ -3,6 +3,10 @@ package com.example.demo.controller;
 import com.example.demo.model.Dtos.Auth.*;
 import com.example.demo.model.User;
 import com.example.demo.service.AuthService;
+import com.example.demo.service.GoogleVerifierService;
+import com.example.demo.service.UserService;
+import com.example.demo.utils.JwtUtil;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -10,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.token.KeyBasedPersistenceTokenService;
 import org.springframework.web.bind.annotation.*;
 import com.example.demo.model.Dtos.common.ApiResponse;
 
@@ -26,6 +31,15 @@ public class AuthController {
 
     @Autowired
     AuthService authService;
+
+    @Autowired
+    GoogleVerifierService googleVerifierService;
+
+    @Autowired
+    JwtUtil jwtUtil;
+
+    @Autowired
+    UserService userService;
 
 
     @PostMapping("/register")
@@ -93,6 +107,8 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.OK).body(
                 new ApiResponse<>(true, response.getMessage(), response.getData()));
     }
+
+
     //forget-password
     @PostMapping("/forget-password")
     @Operation(summary = "Forget Password")
@@ -106,6 +122,8 @@ public class AuthController {
         responseData.put("email", input.get("email"));
         return ResponseEntity.ok(new ApiResponse<>(true, response, responseData));
     }
+
+
     //reset-password with otp or old password
     @PostMapping("/reset-password")
     @Operation(summary = "Reset Password")
@@ -118,6 +136,40 @@ public class AuthController {
 
         authService.resetPassword(request);
         return ResponseEntity.ok(new ApiResponse<>(true, "Password reset successful", request));
+    }
+
+    //Google Login
+    @PostMapping("/google-login")
+    public ResponseEntity<ApiResponse<?>> googleLogin(@RequestHeader("Authorization") String authorizationHeader) {
+        // Extract the token from "Bearer <token>"
+        String googleIdToken = authorizationHeader.replace("Bearer ", "");
+
+        // Step 2: Verify Google ID token
+        if (googleIdToken == null || googleIdToken.isEmpty()) {
+            throw new BadCredentialsException("Google ID token is missing or empty");
+        }
+
+        GoogleIdToken.Payload payload = googleVerifierService.verifyToken(googleIdToken);
+        if(payload == null){
+            return new ResponseEntity<>(
+                    new ApiResponse<>(false,"Invalid ID token",null), HttpStatus.UNAUTHORIZED);
+        }
+
+        // Step 3: Find or create user in DB
+        User user = userService.findOrCreateUser(payload);
+
+        // Step 4: Generate JWT for your app
+        String appJwt = jwtUtil.generateToken(user.getEmail());
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("token",appJwt);
+        data.put("email", user.getEmail());
+        data.put("fullName",user.getFullName());
+        data.put("username",user.getUsername());
+        data.put("id",user.getId().toString());
+
+        return new ResponseEntity<>(
+                new ApiResponse<>(true, "Google login successful", data), HttpStatus.OK);
     }
 
 

@@ -3,11 +3,14 @@ package com.example.demo.service;
 import com.example.demo.model.User;
 import com.example.demo.model.Dtos.UserDTO;
 import com.example.demo.repo.UserRepo;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class UserService {
@@ -35,5 +38,21 @@ public class UserService {
             return List.of(); // Return empty list if no users found
         }
         return users.stream().map(UserDTO::new).toList(); // Convert to UserDTO list
+    }
+
+
+    public User findOrCreateUser(GoogleIdToken.Payload payload) {
+        String email = payload.getEmail();
+        Optional<User> userOpt = repo.findByEmail(email);
+        return userOpt.orElseGet(() -> {
+            User newUser = new User();
+            newUser.setEmail(email);
+            newUser.setFullName((String) payload.get("name"));
+            newUser.setUsername((String) payload.get("email").toString().split("@")[0]); // Use email prefix as username
+            newUser.setVerified(true); // Assuming Google users are verified
+            newUser.setPassword(""); // No password needed for Google login
+            newUser.setCreatedAt(LocalDateTime.now());
+            return repo.save(newUser);
+        });
     }
 }

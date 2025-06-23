@@ -22,8 +22,10 @@ public class MqttConfig {
     @Autowired
     private MqttService mqttService;
 
-    private static final String MQTT_BROKER = "tcp://broker.hivemq.com:1883";
-    private static final String CLIENT_ID = "springBootClient";
+    @Value("${mqtt.broker.url}")
+    private String MQTT_BROKER;
+    @Value("${mqtt.client.id}")
+    private String CLIENT_ID;
 
     @Value("${mqtt.topics}")
     private String[] TOPICS;

@@ -6,6 +6,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
@@ -16,8 +17,11 @@ import java.util.Map;
 
 @Component
 public class JwtUtil {
-    private static final long EXPIRATION_TIME = 10 * 60 * 60 * 1000;
-    private static final String SECRET_KEY = "RxDcyO93MqM4i/K+0DyA0kw4Z4S1plizP8MJTGbzsk+Q8QV6SZT/DIFRpqmYUA78fJY=";
+    @Value("${jwt.expiration.time}")
+    private long EXPIRATION_TIME;
+
+    @Value("${jwt.secret.key}")
+    private String SECRET_KEY;
 
     public String generateToken(String email) {
         Map<String, Object> claims = new HashMap<>();

@@ -6,6 +6,7 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -14,11 +15,11 @@ public class GoogleVerifierService {
     private final GoogleIdTokenVerifier verifier;
 
     public GoogleVerifierService() {
-        // Replace with your actual Google Client ID
-        String GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID";
-        verifier = new GoogleIdTokenVerifier
-                .Builder(new NetHttpTransport(), new GsonFactory())
-                .setAudience(List.of(GOOGLE_CLIENT_ID)) // Set the client ID to verify against
+        // Replace with your actual Google Client ID from Google Cloud Console
+        String GOOGLE_CLIENT_ID = "379565691907-9mtgjgc6qtvrliq95a0quu0nii5au0kn.apps.googleusercontent.com";
+
+        this.verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), new GsonFactory())
+                .setAudience(Collections.singletonList(GOOGLE_CLIENT_ID))
                 .build();
     }
 
@@ -27,8 +28,8 @@ public class GoogleVerifierService {
             GoogleIdToken idToken = verifier.verify(idTokenString);
             return (idToken != null) ? idToken.getPayload() : null;
         } catch (Exception e) {
+            e.printStackTrace(); // optional: log the error
             return null;
         }
     }
 }
-

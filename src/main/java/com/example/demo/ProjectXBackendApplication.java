@@ -4,8 +4,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import jakarta.annotation.PostConstruct;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
+@EnableScheduling
 public class ProjectXBackendApplication {
 
     public static void main(String[] args) {

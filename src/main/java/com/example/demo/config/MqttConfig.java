@@ -30,11 +30,18 @@ public class MqttConfig {
     @Value("${mqtt.topics}")
     private String[] TOPICS;
 
+    @Value("${mqtt.username}")
+    private String MQTT_USERNAME;
+    @Value("${mqtt.password}")
+    private String MQTT_PASSWORD;
+
     @Bean
     public MqttPahoClientFactory mqttClientFactory() {
         DefaultMqttPahoClientFactory factory = new DefaultMqttPahoClientFactory();
         MqttConnectOptions options = new MqttConnectOptions();
         options.setServerURIs(new String[]{MQTT_BROKER});
+        options.setUserName(MQTT_USERNAME);
+        options.setPassword(MQTT_PASSWORD.toCharArray());
         options.setCleanSession(true);
         factory.setConnectionOptions(options);
         return factory;
@@ -46,7 +53,7 @@ public class MqttConfig {
         return new DirectChannel();
     }
     @Bean
-    public MessageProducer inbound() {
+    public MqttPahoMessageDrivenChannelAdapter mqttAdapter() {
         MqttPahoMessageDrivenChannelAdapter adapter =
                 new MqttPahoMessageDrivenChannelAdapter(CLIENT_ID, mqttClientFactory(), TOPICS);
         adapter.setCompletionTimeout(5000);
@@ -66,6 +73,10 @@ public class MqttConfig {
             // call mqttService to process the message
             mqttService.handleIncomingData(message.getPayload().toString());
         };
+    }
+
+    public boolean isMqttConnected() {
+        return mqttAdapter().isRunning();
     }
 
 }

@@ -55,4 +55,12 @@ public class UserService {
             return repo.save(newUser);
         });
     }
+
+    public void removeUnverifiedUsers() {
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(1);
+        List<User> unverifiedUsers = repo.findByIsVerifiedFalseAndCreatedAtBefore(cutoff);
+        if (!unverifiedUsers.isEmpty()) {
+            repo.deleteAll(unverifiedUsers);
+        }
+    }
 }

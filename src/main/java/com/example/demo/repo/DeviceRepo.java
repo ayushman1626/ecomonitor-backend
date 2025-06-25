@@ -2,7 +2,6 @@ package com.example.demo.repo;
 
 import com.example.demo.model.Device;
 import com.example.demo.model.Interface;
-import com.example.demo.model.SensorReading;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
@@ -22,4 +21,5 @@ public interface DeviceRepo extends JpaRepository<Device, UUID> {
 
     boolean existsByIdAndInterfaceEntityIn(UUID deviceId, List<Interface> interfaces);
 
+    List<Device> findByIsActiveTrueAndLastUpdatedBefore(LocalDateTime cutoff);
 }

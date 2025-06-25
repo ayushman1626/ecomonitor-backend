@@ -4,6 +4,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -14,10 +15,11 @@ public class GoogleVerifierService {
 
     private final GoogleIdTokenVerifier verifier;
 
+    @Value("${google.client.id}")
+    private String GOOGLE_CLIENT_ID;
+
     public GoogleVerifierService() {
         // Replace with your actual Google Client ID from Google Cloud Console
-        String GOOGLE_CLIENT_ID = "379565691907-9mtgjgc6qtvrliq95a0quu0nii5au0kn.apps.googleusercontent.com";
-
         this.verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), new GsonFactory())
                 .setAudience(Collections.singletonList(GOOGLE_CLIENT_ID))
                 .build();

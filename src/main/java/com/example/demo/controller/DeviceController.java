@@ -123,7 +123,7 @@ public class DeviceController {
             @AuthenticationPrincipal UserPrinciple userPriciple
     ) throws Exception{
         if(userPriciple == null){
-             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not authorized");
+             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authorized");
         }
 
         try {

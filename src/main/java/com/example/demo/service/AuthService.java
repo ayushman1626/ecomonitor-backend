@@ -59,7 +59,7 @@ public class AuthService {
             return new RegistrationResponse(user.getEmail(), "Registration successful. Verification email sent.", true);
         } catch (Exception e) {
             userRepo.delete(user);
-            return new RegistrationResponse(user.getEmail(), "Registration failed. Could not send verification email.", false);
+            return new RegistrationResponse(user.getEmail(), "Registration failed. Could not send verification email."+e.getMessage(), false);
         }
     }
 

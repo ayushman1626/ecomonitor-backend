@@ -108,9 +108,9 @@ public class AuthService {
         return new LoginResponse(data,true,"Login successful");
     }
 
-    public List<User> getUsers(){
-        return userRepo.findByIsVerifiedTrue();
-    }
+//    public List<User> getUsers(){
+//        return userRepo.findByIsVerifiedTrue();
+//    }
 
     // Forget Password
     public String forgetPassword(String email) {

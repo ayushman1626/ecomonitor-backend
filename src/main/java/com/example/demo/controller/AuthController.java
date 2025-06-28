@@ -177,9 +177,9 @@ public class AuthController {
 
 
 
-    @GetMapping("api/users")
-    @Operation(summary = "For dev")
-    ResponseEntity<List<User>> getUsers(){
-        return ResponseEntity.ok(authService.getUsers());
-    }
+//    @GetMapping("api/users")
+//    @Operation(summary = "For dev")
+//    ResponseEntity<List<User>> getUsers(){
+//        return ResponseEntity.ok(authService.getUsers());
+//    }
 }

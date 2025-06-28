@@ -128,7 +128,8 @@ public class DeviceService {
         return readings.stream()
                 .map(reading -> new SensorReadingDTO(
                         reading.getSensor().getId().toString(),
-                        reading.getValue().toString(),
+                        reading.getValue1().toString(),
+                        reading.getValue2() != null ? reading.getValue2().toString() : null,
                         reading.getRecordedAt().toString()))
                 .toList();
     }

@@ -4,6 +4,7 @@ import com.example.demo.config.MqttConfig;
 import com.example.demo.model.Device;
 import com.example.demo.repo.DeviceRepo;
 import com.example.demo.service.MqttService;
+import com.example.demo.service.MqttStatusService;
 import com.example.demo.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -24,10 +25,13 @@ public class ScheduledTaskManager {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private MqttStatusService mqttStatusService;
+
     // Runs every 30 seconds
     @Scheduled(fixedRate = 30_000)
     public void markOfflineDevices() {
-        if (mqttConfig.isMqttConnected()) {
+        if (mqttStatusService.isMqttConnected()) {
             LocalDateTime cutoff = LocalDateTime.now().minusMinutes(1);
             List<Device> outdatedDevices = deviceRepo.findByIsActiveTrueAndLastUpdatedBefore(cutoff);
             for (Device device : outdatedDevices) {

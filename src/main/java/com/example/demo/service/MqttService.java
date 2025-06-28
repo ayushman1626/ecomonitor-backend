@@ -4,6 +4,7 @@ package com.example.demo.service;
 import com.example.demo.model.Device;
 import com.example.demo.model.Dtos.SensorReadingDTO;
 import com.example.demo.model.SensorReading;
+import com.example.demo.model.enums.DeviceType;
 import com.example.demo.repo.DeviceRepo;
 import com.example.demo.repo.SensorReadingRepo;
 import com.example.demo.utils.DeviceStreamManager;
@@ -39,7 +40,8 @@ public class MqttService {
             JsonNode node = mapper.readTree(payload);
 
             UUID deviceId = UUID.fromString(node.get("sensor_id").asText());
-            BigDecimal value = node.get("value").decimalValue();
+            BigDecimal value1 = node.get("value1").decimalValue();
+            BigDecimal value2 = node.get("value2") != null ? node.get("value2").decimalValue() : null;
 
             //System.out.println("Received data for sensor_id: " + deviceId + " with value: " + value);
 
@@ -47,25 +49,40 @@ public class MqttService {
             // Validate device ID and value and
             Device device = deviceRepo.findById(deviceId)
                     .orElseThrow(() -> new IllegalArgumentException("Device not found: " + deviceId));
-            if (value == null || value.compareTo(BigDecimal.ZERO) < 0) {
-                logger.error("Invalid sensor value: {}", value);
-                throw new IllegalArgumentException("Invalid sensor value: " + value);
+            if (value1 == null || value1.compareTo(BigDecimal.ZERO) < 0 ) {
+                logger.error("Invalid sensor value1: {}", value1);
+                throw new IllegalArgumentException("Invalid sensor value: " + value1);
+            }
+           //If the device is a smart bin, value2 must be non-negative and not null
+            if ( device.getType().compareTo(DeviceType.SMART_BIN) == 0
+                    && (value2 == null || value2.compareTo(BigDecimal.ZERO) < 0)){
+                logger.error("Invalid sensor value2: {}", value2);
+                throw new IllegalArgumentException("Invalid sensor value2: " + value2);
             }
 
 
             // 1. Save to sensor_data
-            SensorReading data = new SensorReading(device, value, LocalDateTime.now());
+            SensorReading data = new SensorReading(device, value1, value2, LocalDateTime.now());
             sensorDataRepo.save(data);
+            logger.info("Sensor data saved: {}", data);
 
             // 2. Update last value in device and set active
             device.setActive(true);
-            device.setLastValue(value);
+            device.setLastValue1(value1);
+            if ( device.getType().compareTo(DeviceType.SMART_BIN) == 0
+                    && value2 != null) {
+                device.setLastValue2(value2);
+            }
             device.setLastUpdated(LocalDateTime.now());
             deviceRepo.save(device); // or load & save
+            logger.info("Device updated: {}", device);
 
             // 3. Push to active SSE clients
             SensorReadingDTO dataDto = new SensorReadingDTO(
-                    device.getId().toString(),data.getValue().toString(),data.getRecordedAt().toString());
+                    device.getId().toString(),data.getValue1().toString(),
+                    data.getValue2() != null ? data.getValue2().toString() : null,
+                    data.getRecordedAt().toString());
+
             streamManager.broadcast(deviceId, dataDto);
             // ... rest of your logic
         } catch (Exception e) {

@@ -24,7 +24,10 @@ public class SensorReading {
     private Device sensor;
 
     @Column(nullable = false, precision = 5, scale = 2)
-    private BigDecimal value;
+    private BigDecimal value1;
+
+    @Column(nullable = true, precision = 5, scale = 2)
+    private BigDecimal value2;
 
     @Column(name = "recorded_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime recordedAt = LocalDateTime.now();
@@ -34,9 +37,10 @@ public class SensorReading {
     }
 
 
-    public SensorReading(Device device, BigDecimal value, LocalDateTime now) {
+    public SensorReading(Device device, BigDecimal value1, BigDecimal value2, LocalDateTime now) {
         this.sensor = device;
-        this.value = value;
+        this.value1 = value1;
+        this.value2 = value2;
         this.recordedAt = now;
     }
 
@@ -56,14 +60,20 @@ public class SensorReading {
         this.sensor = sensor;
     }
 
-    public BigDecimal getValue() {
-        return value;
+    public BigDecimal getValue1() {
+        return value1;
     }
 
-    public void setValue(BigDecimal value) {
-        this.value = value;
+    public void setValue1(BigDecimal value1) {
+        this.value1 = value1;
     }
 
+    public BigDecimal getValue2() {
+        return value2;
+    }
+    public void setValue2(BigDecimal value2) {
+        this.value2 = value2;
+    }
     public LocalDateTime getRecordedAt() {
         return recordedAt;
     }
@@ -77,7 +87,8 @@ public class SensorReading {
         return "SensorReading{" +
                 "id=" + id +
                 ", sensor=" + sensor +
-                ", value=" + value +
+                ", value=" + value1 +
+                ", value2=" + value2 +
                 ", recordedAt=" + recordedAt +
                 '}';
     }

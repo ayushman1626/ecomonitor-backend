@@ -14,7 +14,8 @@ public class DeviceDTO {
     private String name;
     private DeviceType type;
     private String location;
-    private BigDecimal lastValue;
+    private BigDecimal lastValue1;
+    private BigDecimal lastValue2;
     private LocalDateTime lastUpdated;
     private String onlineStatus;
     private String interfaceId;
@@ -25,7 +26,8 @@ public class DeviceDTO {
         this.name = device.getName();
         this.type = device.getType();
         this.location = device.getLocation();
-        this.lastValue = device.getLastValue();
+        this.lastValue1 = device.getLastValue1();
+        this.lastValue2 = device.getLastValue2();
         this.lastUpdated = device.getLastUpdated();
         this.interfaceId = device.getInterfaceEntity().getId().toString();
         this.interfaceName = device.getInterfaceEntity().getName();
@@ -64,12 +66,19 @@ public class DeviceDTO {
         this.location = location;
     }
 
-    public BigDecimal getLastValue() {
-        return lastValue;
+    public BigDecimal getLastValue1() {
+        return lastValue1;
     }
 
-    public void setLastValue(BigDecimal lastValue) {
-        this.lastValue = lastValue;
+    public void setLastValue1(BigDecimal lastValue1) {
+        this.lastValue1 = lastValue1;
+    }
+
+    public BigDecimal getLastValue2() {
+        return lastValue2;
+    }
+    public void setLastValue2(BigDecimal lastValue2) {
+        this.lastValue2 = lastValue2;
     }
 
     public LocalDateTime getLastUpdated() {
@@ -110,7 +119,8 @@ public class DeviceDTO {
                 ", name='" + name + '\'' +
                 ", type='" + type + '\'' +
                 ", location='" + location + '\'' +
-                ", lastValue=" + lastValue +
+                ", lastValue=" + lastValue1 +
+                ", lastValue2=" + lastValue2 +
                 ", lastUpdated=" + lastUpdated +
                 ", interfaceId='" + interfaceId + '\'' +
                 ", interfaceName='" + interfaceName + '\'' +

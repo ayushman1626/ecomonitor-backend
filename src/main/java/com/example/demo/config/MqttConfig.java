@@ -2,6 +2,8 @@ package com.example.demo.config;
 
 import com.example.demo.service.MqttService;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -18,6 +20,8 @@ import org.springframework.messaging.MessageHandler;
 
 @Configuration
 public class MqttConfig {
+
+    private static final Logger logger = LoggerFactory.getLogger(MqttConfig.class);
 
     @Autowired
     private MqttService mqttService;
@@ -67,16 +71,22 @@ public class MqttConfig {
     @ServiceActivator(inputChannel = "mqttInputChannel")
     public MessageHandler messageHandler() {
         return message -> {
-            // Handle the incoming message here
-            String payload = message.getPayload().toString();
-            System.out.println("Received MQTT message: " + payload);
-            // call mqttService to process the message
-            mqttService.handleIncomingData(message.getPayload().toString());
-        };
-    }
+            try {
+                if (message.getPayload() == null) {
+                    logger.warn("MQTT message has null payload");
+                    return;
+                }
+                String payload = message.getPayload().toString();
+                String topic = message.getHeaders().get("mqtt_receivedTopic").toString();
+                logger.info("Received MQTT message on topic [{}]: {}", topic, payload);
+                logger.info("Headers: {}", message.getHeaders());
 
-    public boolean isMqttConnected() {
-        return mqttAdapter().isRunning();
+                mqttService.handleIncomingData(payload);
+
+            } catch (Exception ex) {
+                logger.error("Error processing MQTT message", ex);
+            }
+        };
     }
 
 }

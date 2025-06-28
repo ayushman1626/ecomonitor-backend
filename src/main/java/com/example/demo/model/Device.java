@@ -44,8 +44,11 @@ public class Device {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = false;
 
-    @Column(name = "last_value", precision = 5, scale = 2)
-    private BigDecimal lastValue;
+    @Column(name = "last_value1", precision = 5, scale = 2)
+    private BigDecimal lastValue1;
+
+    @Column(name = "last_value2", precision = 5, scale = 2)
+    private BigDecimal lastValue2;
 
     @Column(name = "last_updated")
     private LocalDateTime lastUpdated;
@@ -101,12 +104,19 @@ public class Device {
         this.placementDate = placementDate;
     }
 
-    public BigDecimal getLastValue() {
-        return lastValue;
+    public BigDecimal getLastValue1() {
+        return lastValue1;
     }
 
-    public void setLastValue(BigDecimal lastValue) {
-        this.lastValue = lastValue;
+    public void setLastValue1(BigDecimal lastValue) {
+        this.lastValue1 = lastValue;
+    }
+
+    public BigDecimal getLastValue2() {
+        return lastValue2;
+    }
+    public void setLastValue2(BigDecimal lastValue2) {
+        this.lastValue2 = lastValue2;
     }
 
     public LocalDateTime getLastUpdated() {
@@ -143,7 +153,8 @@ public class Device {
                 ", location='" + location + '\'' +
                 ", placementDate=" + placementDate +
                 ", isActive=" + isActive +
-                ", lastValue=" + lastValue +
+                ", lastValue=" + lastValue1 +
+                ", lastValue2=" + lastValue2 +
                 ", lastUpdated=" + lastUpdated +
                 ", createdAt=" + createdAt +
                 '}';

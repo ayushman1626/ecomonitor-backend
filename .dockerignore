@@ -1,0 +1,80 @@
+
+# Version control
+.git/
+.gitignore
+
+# IDE and editor files
+.idea/
+*.swp
+*.swo
+
+# Build outputs
+/target/
+dist/
+build/
+out/
+
+# Java class files
+*.class
+
+# Test sources (do not include test resources in image)
+src/test/
+
+# Logs and debug files
+*.log
+debug/
+
+# Temporary files and folders
+tmp/
+temp/
+*.tmp
+
+# Documentation
+README*
+docs/
+*.md
+
+# Environment and secrets
+.env*
+*.env
+*.pem
+*.key
+*.crt
+config.local.*
+*.local.yml
+
+# Docker files (if not needed in image)
+Dockerfile*
+docker-compose*
+
+# Miscellaneous
+local/
+.local/
+
+# Node.js, Python, Go (not detected, but safe to ignore common artifacts)
+node_modules/
+npm-debug.log
+yarn-debug.log
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+/vendor/
+*.test
+.go-cache/
+
+# SVN, Mercurial
+.svn/
+.hg/
+
+# Exclude Maven wrapper and config from ignore (do NOT ignore these):
+# !mvnw
+# !mvnw.cmd
+# !.mvn/
+# !pom.xml
+
+# Exclude main source and resources from ignore (do NOT ignore these):
+# !src/main/
+# !src/main/resources/
+# !src/main/java/

@@ -1,0 +1,41 @@
+services:
+  java-backend:
+    build:
+      context: .
+    container_name: java-backend
+    restart: unless-stopped
+    init: true
+    # env_file: ./.env  # Uncomment if .env file exists
+    ports:
+      - "8000:8000"  # Exposes the Spring Boot app on port 8000
+    networks:
+      - backend-net
+    # If your application requires a database or other services, add them below and update depends_on accordingly
+    # depends_on:
+    #   - postgres
+
+# Example for a PostgreSQL database (uncomment and configure if needed)
+#  postgres:
+#    image: postgres:latest
+#    restart: unless-stopped
+#    environment:
+#      POSTGRES_USER: user
+#      POSTGRES_PASSWORD: password
+#      POSTGRES_DB: projectx
+#    volumes:
+#      - pgdata:/var/lib/postgresql/data
+#    networks:
+#      - backend-net
+#    healthcheck:
+#      test: ["CMD-SHELL", "pg_isready -U user"]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
+
+networks:
+  backend-net:
+    driver: bridge
+
+# Uncomment if you add a database service with persistence
+#volumes:
+#  pgdata:

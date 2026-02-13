@@ -43,6 +43,7 @@ public class DeviceStreamManager {
         for (SseEmitter emitter : list) {
             try {
                 emitter.send(SseEmitter.event().name("device-live").data(data));
+                System.out.println("********************************\n**************************\n*************************");
             } catch (Exception e) {
                 deadEmitters.add(emitter);
             }

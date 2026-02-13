@@ -48,12 +48,12 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(request -> request
                         .requestMatchers(
-                                "api/auth/register",
-                                "api/auth/login",
-                                "api/auth/register/verify-otp",
-                                "api/auth/google-login",
-                                "api/auth/resend-otp",
-                                "hello",
+                                "/api/auth/register",
+                                "/api/auth/login",
+                                "/api/auth/register/verify-otp",
+                                "/api/auth/google-login",
+                                "/api/auth/resend-otp",
+                                "/hello",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
@@ -71,7 +71,7 @@ public class SecurityConfig {
 
     private CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://127.0.0.1:5500","http://localhost:5173/","http://192.168.0.101:5173")); // Your frontend URL
+        config.setAllowedOrigins(List.of("http://127.0.0.1:5500","http://localhost:5173/","http://192.168.0.101:5173","http://127.0.0.1:5174/")); // Your frontend URL
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true); // needed if you use cookies or Authorization headers

@@ -10,6 +10,8 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +31,7 @@ import java.util.Map;
 @Tag(name = "Auth", description = "API endpoints for auth")
 public class AuthController {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
     @Autowired
     AuthService authService;
 
@@ -46,7 +49,7 @@ public class AuthController {
     @Operation(summary = "Register user")
     public ResponseEntity<ApiResponse<Map<String, Object>>> registerUser(
             @Valid @RequestBody RegisterRequest request) {
-
+        log.info("Received registration request for email: {}", request.getEmail());
         //passing to service
         RegistrationResponse response = authService.registerUser(request);
 

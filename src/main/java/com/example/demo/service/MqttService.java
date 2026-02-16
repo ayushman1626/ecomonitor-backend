@@ -39,22 +39,27 @@ public class MqttService {
             ObjectMapper mapper = new ObjectMapper();
             JsonNode node = mapper.readTree(payload);
 
-            UUID deviceId = UUID.fromString(node.get("sensor_id").asText());
+            String hardwareId = node.get("sensor_id").asText();
             BigDecimal value1 = node.get("value1").decimalValue();
             BigDecimal value2 = node.get("value2") != null ? node.get("value2").decimalValue() : null;
+            BigDecimal battery_status = node.get("battery").decimalValue();
 
             //System.out.println("Received data for sensor_id: " + deviceId + " with value: " + value);
 
 
             // Validate device ID and value and
-            Device device = deviceRepo.findById(deviceId)
-                    .orElseThrow(() -> new IllegalArgumentException("Device not found: " + deviceId));
+            Device device = deviceRepo.findByHardwareId(hardwareId)
+                    .orElseThrow(() -> new IllegalArgumentException("Device not found with hardware id: " + hardwareId));
             if (value1 == null || value1.compareTo(BigDecimal.ZERO) < 0 ) {
                 logger.error("Invalid sensor value1: {}", value1);
                 throw new IllegalArgumentException("Invalid sensor value: " + value1);
             }
+            if (battery_status == null || battery_status.compareTo(BigDecimal.ZERO) < 0 ) {
+                logger.error("Invalid sensor battery_status: {}", battery_status);
+                throw new IllegalArgumentException("Invalid sensor value: " + battery_status);
+            }
            //If the device is a smart bin, value2 must be non-negative and not null
-            if ( device.getType().compareTo(DeviceType.SMART_BIN) == 0
+            if ( device.getType().compareTo(DeviceType.DUAL_BIN) == 0
                     && (value2 == null || value2.compareTo(BigDecimal.ZERO) < 0)){
                 logger.error("Invalid sensor value2: {}", value2);
                 throw new IllegalArgumentException("Invalid sensor value2: " + value2);
@@ -62,17 +67,24 @@ public class MqttService {
 
 
             // 1. Save to sensor_data
-            SensorReading data = new SensorReading(device, value1, value2, LocalDateTime.now());
+            SensorReading data = SensorReading.builder()
+                    .value1(value1)
+                    .value2(value2)
+                    .value3(battery_status)
+                    .sensor(device)
+                    .recordedAt(LocalDateTime.now())
+                    .build();
             sensorDataRepo.save(data);
             logger.info("Sensor data saved: {}", data);
 
             // 2. Update last value in device and set active
-            device.setActive(true);
+            device.setIsActive(true);
             device.setLastValue1(value1);
-            if ( device.getType().compareTo(DeviceType.SMART_BIN) == 0
+            if ( device.getType().compareTo(DeviceType.DUAL_BIN) == 0
                     && value2 != null) {
                 device.setLastValue2(value2);
             }
+            device.setBattery_status(battery_status);
             device.setLastUpdated(LocalDateTime.now());
             deviceRepo.save(device); // or load & save
             logger.info("Device updated: {}", device);
@@ -81,9 +93,10 @@ public class MqttService {
             SensorReadingDTO dataDto = new SensorReadingDTO(
                     device.getId().toString(),data.getValue1().toString(),
                     data.getValue2() != null ? data.getValue2().toString() : null,
-                    data.getRecordedAt().toString());
-
-            streamManager.broadcast(deviceId, dataDto);
+                    data.getRecordedAt().toString(),
+                    data.getValue3().toString()
+            );
+            streamManager.broadcast(device.getId(), dataDto);
             // ... rest of your logic
         } catch (Exception e) {
             logger.error("Failed to parse payload: {}", payload, e);

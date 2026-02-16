@@ -6,13 +6,15 @@ import lombok.Data;
 public class SensorReadingDTO {
     private String value1;
     private String value2;
+    private String battery_status;
     private String deviceId;
     private String timestamp;
 
-    public SensorReadingDTO(String deviceId, String value1,String value2, String timestamp) {
+    public SensorReadingDTO(String deviceId, String value1,String value2, String timestamp,String battery_status) {
         this.deviceId = deviceId;
         this.value1 = value1;
         this.value2 = value2;
+        this.battery_status = battery_status;
         this.timestamp = timestamp;
     }
 }

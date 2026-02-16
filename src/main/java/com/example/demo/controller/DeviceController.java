@@ -1,9 +1,11 @@
 package com.example.demo.controller;
 
+import com.example.demo.model.Device;
 import com.example.demo.model.Dtos.SensorReadingDTO;
 import com.example.demo.model.Dtos.device.DeviceDTO;
 import com.example.demo.model.Dtos.device.DeviceRequestDTO;
 import com.example.demo.model.Dtos.common.ApiResponse;
+import com.example.demo.model.Dtos.device.LinkRequestDto;
 import com.example.demo.model.User;
 import com.example.demo.model.UserPrinciple;
 import com.example.demo.service.DeviceService;
@@ -23,6 +25,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.nio.file.AccessDeniedException;
+import java.security.PublicKey;
 import java.util.List;
 import java.util.UUID;
 
@@ -57,9 +60,20 @@ public class DeviceController {
                 .body(new ApiResponse<>(true, "Device created successfully", savedDevice));
     }
 
-
-
-
+    @PostMapping("/link")
+    @Operation(summary = "link hardware device")
+    public ResponseEntity<ApiResponse<String>> linHardwareDevice(
+            @RequestBody LinkRequestDto request,
+            @AuthenticationPrincipal UserPrinciple userPrinciple
+    )throws Exception{
+        if(userPrinciple == null){
+            return new ResponseEntity<>(
+                    new ApiResponse<>(false,"UNAUTHENTICATED",null), HttpStatus.UNAUTHORIZED);
+        }
+        deviceService.linkHardwareDevice(request.getDeviceId(),request.getHardwareId(),userPrinciple.getUsername());
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(new ApiResponse<>(true,"Hardware device linked successfully",null));
+    }
 
     //Get all devices for the authenticated user
     @GetMapping("")

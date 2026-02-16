@@ -1,15 +1,15 @@
 package com.example.demo.service;
 
+import com.example.demo.exceptions.UserAlreadyExistsException;
 import com.example.demo.model.*;
 import com.example.demo.model.Dtos.SensorReadingDTO;
 import com.example.demo.model.Dtos.device.DeviceDTO;
 import com.example.demo.model.Dtos.device.DeviceRequestDTO;
+import com.example.demo.model.enums.DeviceType;
 import com.example.demo.model.enums.Role;
-import com.example.demo.repo.DeviceRepo;
-import com.example.demo.repo.InterfaceRepo;
-import com.example.demo.repo.SensorReadingRepo;
-import com.example.demo.repo.UserInterfaceRepo;
+import com.example.demo.repo.*;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -37,7 +37,8 @@ public class DeviceService {
 
     @Autowired
     SensorReadingRepo sensorReadingRepo;
-
+    @Autowired
+    private UserRepo userRepo;
 
 
     public DeviceDTO createDevice(DeviceRequestDTO deviceRequest, UUID interfaceId, String username)
@@ -62,7 +63,25 @@ public class DeviceService {
         newDevice.setInterfaceEntity(interfaceEntity);
         newDevice.setCreatedAt(LocalDateTime.now());
         newDevice.setPlacementDate(LocalDate.now());
+        System.out.println("Device type being saved: [" + deviceRequest.getType().name() + "]");
         return new DeviceDTO(deviceRepo.save(newDevice));
+    }
+
+    public void linkHardwareDevice(
+            UUID deviceId, String hardwareId, String username) throws AccessDeniedException{
+            if(deviceRepo.existsByHardwareId(hardwareId)){
+                throw new UserAlreadyExistsException("HardwareId already in use");
+            }
+            Device device = deviceRepo.findById(deviceId).orElseThrow(() -> new EntityNotFoundException("Device not found"));
+            User user = userRepo.findByUsername(username);
+
+            boolean hasAdminAccess = userHasAdminAccessToDevice(user, deviceId);
+            if (!hasAdminAccess) {
+                throw new AccessDeniedException("You do not have access modify this device");
+            }
+
+            device.setHardwareId(hardwareId);
+            deviceRepo.save(device);
     }
 
     public List<DeviceDTO> getAllDevices(UserPrinciple userPrinciple) {
@@ -130,6 +149,7 @@ public class DeviceService {
                         reading.getSensor().getId().toString(),
                         reading.getValue1().toString(),
                         reading.getValue2() != null ? reading.getValue2().toString() : null,
+                        reading.getValue3().toString(),
                         reading.getRecordedAt().toString()))
                 .toList();
     }
@@ -174,4 +194,7 @@ public class DeviceService {
 
         return userInterface.getRole().equals(Role.ADMIN);
     }
+
+
+
 }

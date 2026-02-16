@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface DeviceRepo extends JpaRepository<Device, UUID> {
@@ -19,7 +20,11 @@ public interface DeviceRepo extends JpaRepository<Device, UUID> {
 
     void deleteById(UUID deviceId);
 
+    boolean existsByHardwareId(String hardwareId);
+
     boolean existsByIdAndInterfaceEntityIn(UUID deviceId, List<Interface> interfaces);
 
     List<Device> findByIsActiveTrueAndLastUpdatedBefore(LocalDateTime cutoff);
+
+    Optional<Device> findByHardwareId(String hardwareId);
 }

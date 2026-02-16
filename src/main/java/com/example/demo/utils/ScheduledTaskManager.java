@@ -35,7 +35,7 @@ public class ScheduledTaskManager {
             LocalDateTime cutoff = LocalDateTime.now().minusMinutes(1);
             List<Device> outdatedDevices = deviceRepo.findByIsActiveTrueAndLastUpdatedBefore(cutoff);
             for (Device device : outdatedDevices) {
-                device.setActive(false);
+                device.setIsActive(false);
                 deviceRepo.save(device);
             }
         }

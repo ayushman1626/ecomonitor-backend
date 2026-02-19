@@ -39,12 +39,12 @@ public class MqttService {
             ObjectMapper mapper = new ObjectMapper();
             JsonNode node = mapper.readTree(payload);
 
-            String hardwareId = node.get("sensor_id").asText();
-            BigDecimal value1 = node.get("value1").decimalValue();
-            BigDecimal value2 = node.get("value2") != null ? node.get("value2").decimalValue() : null;
-            BigDecimal battery_status = node.get("battery").decimalValue();
+            String hardwareId = node.get("id").asText();
+            BigDecimal value1 = node.get("v1").decimalValue();
+            BigDecimal value2 = node.get("v2") != null ? node.get("v2").decimalValue() : null;
+            BigDecimal battery_status = node.get("battery") != null ? node.get("battery").decimalValue() : new BigDecimal("70");
 
-            //System.out.println("Received data for sensor_id: " + deviceId + " with value: " + value);
+            System.out.println("Received data for hardwareId: " + hardwareId + " with value1: " + value1 + " and value2 :" + value2 + " and battery: " + battery_status);
 
 
             // Validate device ID and value and
@@ -91,10 +91,11 @@ public class MqttService {
 
             // 3. Push to active SSE clients
             SensorReadingDTO dataDto = new SensorReadingDTO(
-                    device.getId().toString(),data.getValue1().toString(),
+                    device.getId().toString(),
+                    data.getValue1().toString(),
                     data.getValue2() != null ? data.getValue2().toString() : null,
-                    data.getRecordedAt().toString(),
-                    data.getValue3().toString()
+                    data.getValue3().toString(),
+                    data.getRecordedAt().toString()
             );
             streamManager.broadcast(device.getId(), dataDto);
             // ... rest of your logic

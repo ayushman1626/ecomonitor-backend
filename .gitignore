@@ -34,3 +34,4 @@ build/
 
 
 **/application-dev.properties
+**/application-h2.properties

@@ -10,7 +10,7 @@ public class SensorReadingDTO {
     private String deviceId;
     private String timestamp;
 
-    public SensorReadingDTO(String deviceId, String value1,String value2, String timestamp,String battery_status) {
+    public SensorReadingDTO(String deviceId, String value1,String value2,String battery_status,String timestamp) {
         this.deviceId = deviceId;
         this.value1 = value1;
         this.value2 = value2;

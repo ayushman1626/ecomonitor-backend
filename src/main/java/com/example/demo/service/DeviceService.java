@@ -9,6 +9,7 @@ import com.example.demo.model.enums.DeviceType;
 import com.example.demo.model.enums.Role;
 import com.example.demo.repo.*;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -73,6 +74,7 @@ public class DeviceService {
                 throw new UserAlreadyExistsException("HardwareId already in use");
             }
             Device device = deviceRepo.findById(deviceId).orElseThrow(() -> new EntityNotFoundException("Device not found"));
+            System.out.println("Device found: " + device.getName() + " with IDDDDDDDDDDDDDDD: " + device.getId());
             User user = userRepo.findByUsername(username);
 
             boolean hasAdminAccess = userHasAdminAccessToDevice(user, deviceId);
@@ -155,6 +157,7 @@ public class DeviceService {
     }
 
     // Method to delete a device
+    @Transactional
     public void deleteDevice(UUID deviceId, String username) throws AccessDeniedException {
         User user = userService.getUserProfile2(username);
         Device device = deviceRepo.findById(deviceId)
@@ -167,6 +170,7 @@ public class DeviceService {
             throw new AccessDeniedException("You do not have access to delete this device.");
         }
         // Delete the device
+        sensorReadingRepo.deleteBySensor(device);
         deviceRepo.delete(device);
     }
 

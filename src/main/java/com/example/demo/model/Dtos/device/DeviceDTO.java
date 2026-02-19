@@ -15,6 +15,7 @@ public class DeviceDTO {
     private String name;
     private DeviceType type;
     private String location;
+    private String hardwareId;
     private BigDecimal lastValue1;
     private BigDecimal lastValue2;
     private BigDecimal battery_status;
@@ -28,6 +29,7 @@ public class DeviceDTO {
         this.name = device.getName();
         this.type = device.getType();
         this.location = device.getLocation();
+        this.hardwareId = device.getHardwareId();
         this.lastValue1 = device.getLastValue1();
         this.lastValue2 = device.getLastValue2();
         this.battery_status = device.getBattery_status();

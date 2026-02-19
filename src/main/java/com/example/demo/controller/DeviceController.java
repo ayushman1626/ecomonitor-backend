@@ -60,9 +60,10 @@ public class DeviceController {
                 .body(new ApiResponse<>(true, "Device created successfully", savedDevice));
     }
 
-    @PostMapping("/link")
+    @PostMapping("/{deviceId}/link")
     @Operation(summary = "link hardware device")
     public ResponseEntity<ApiResponse<String>> linHardwareDevice(
+            @PathVariable UUID deviceId,
             @RequestBody LinkRequestDto request,
             @AuthenticationPrincipal UserPrinciple userPrinciple
     )throws Exception{
@@ -70,7 +71,7 @@ public class DeviceController {
             return new ResponseEntity<>(
                     new ApiResponse<>(false,"UNAUTHENTICATED",null), HttpStatus.UNAUTHORIZED);
         }
-        deviceService.linkHardwareDevice(request.getDeviceId(),request.getHardwareId(),userPrinciple.getUsername());
+        deviceService.linkHardwareDevice(deviceId,request.getHardwareId(),userPrinciple.getUsername());
         return ResponseEntity.status(HttpStatus.OK)
                 .body(new ApiResponse<>(true,"Hardware device linked successfully",null));
     }

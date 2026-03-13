@@ -10,4 +10,6 @@ import java.util.UUID;
 @Repository
 public interface RouteRepository extends JpaRepository<Route, UUID> {
     List<Route> findByInterfaceEntityId(UUID interfaceId);
+
+    List<Route> findByAssignedWorkerIdAndStatus(UUID workerId, com.example.demo.model.enums.RouteStatus status);
 }

@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.model.*;
+import com.example.demo.model.Dtos.inface.InterfaceCreaterequestDto;
 import com.example.demo.model.Dtos.inface.InterfaceDTO;
 import com.example.demo.model.Dtos.inface.InterfaceWithDevicesDTO;
 import com.example.demo.model.enums.Role;
@@ -50,8 +51,14 @@ public class InterfaceService {
     }
 
     @Transactional
-    public InterfaceDTO saveInterface(Interface iface, String username) throws Exception{
+    public InterfaceDTO saveInterface(InterfaceCreaterequestDto request, String username) throws Exception{
         User user = userService.getUserProfile2(username);
+
+        Interface iface = new Interface();
+        iface.setName(request.getName());
+        iface.setDescription(request.getDescription());
+        iface.setStartLocation(request.getStartLocation() == null ? null : request.getStartLocation());
+        iface.setEndLocation(request.getEndLocation() == null ? null : request.getEndLocation());
         iface.setCreatedBy(user);
         iface.setCreatedAt(LocalDateTime.now());
         Interface savedInterface = interfaceRepo.save(iface);

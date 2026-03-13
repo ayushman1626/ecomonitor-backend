@@ -3,6 +3,7 @@ package com.example.demo.model;
 import com.example.demo.model.enums.RouteStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -13,33 +14,51 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "route")
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class Route {
     @Id
-    @GeneratedValue(generator = "UUID")
-    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
-    @Column(updatable = false, nullable = false, unique = true)
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @ManyToOne
     @JoinColumn(name = "interface_id", referencedColumnName = "id", nullable = false)
     private Interface interfaceEntity;
 
-    @Column(name = "vehicle_id", nullable = false)
+    @Column(name = "start_location")
+    private String startLocation;
+
+    @Column(name = "end_location")
+    private String endLocation;
+
+    @Column(name = "vehicle_id")
     private String vehicleId;
+
+    @Column(name = "assigned_worker_id")
+    private UUID assignedWorkerId;
+
+    @Column(name = "status")
+    @Enumerated(EnumType.STRING)
+    private RouteStatus status;
+
+    @Column(name = "started_at")
+    private LocalDateTime startedAt;
+
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
+    @Column(name = "total_collected")
+    private Integer totalCollected = 0;
+
+    @Column(name = "total_skipped")
+    private Integer totalSkipped = 0;
 
     @Column(name = "total_distance")
     private Double totalDistance;
 
     @Column(name = "total_duration")
     private Double totalDuration;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private RouteStatus status;
 
     @Column(name = "created_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private LocalDateTime createdAt = LocalDateTime.now();

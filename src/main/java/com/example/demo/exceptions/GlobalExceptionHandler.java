@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.example.demo.model.Dtos.common.ApiResponse;
 
-import java.nio.file.AccessDeniedException;
+import org.springframework.security.access.AccessDeniedException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -57,14 +57,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse<>(false, ex.getMessage(), null));
     }
 
-
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<ApiResponse<String>> handelDataIntegrityViolationException(DataIntegrityViolationException ex) {
+    public ResponseEntity<ApiResponse<String>> handelDataIntegrityViolationException(
+            DataIntegrityViolationException ex) {
         log.warn(ex.getMessage());
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiResponse<>(false, "Data conflict: " + ex.getMessage(), null));
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ApiResponse<>(false, "Data conflict: " + ex.getMessage(), null));
     }
 
-    //Custom
+    // Custom
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ResponseEntity<ApiResponse<String>> handelUserAlreadyExistWithEmail(UserAlreadyExistsException ex) {
 
@@ -72,7 +73,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiResponse<>(false, ex.getMessage(), null));
     }
 
-    //Custom
+    // Custom
     @ExceptionHandler(VerificationTokenExpiredException.class)
     public ResponseEntity<ApiResponse<String>> handelVerificationTokenExpired(VerificationTokenExpiredException ex) {
 
@@ -98,9 +99,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiResponse<>(false, ex.getMessage(), null));
     }
 
-
-
-    //For any other exceptions
+    // For any other exceptions
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<String>> handleGenericException(Exception ex) {
         log.warn(ex.getMessage());
@@ -108,4 +107,3 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }
-

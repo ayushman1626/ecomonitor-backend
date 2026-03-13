@@ -11,6 +11,7 @@ import com.example.demo.repo.DeviceRepo;
 import com.example.demo.repo.InterfaceRepo;
 import com.example.demo.repo.RouteRepository;
 import com.example.demo.repo.RouteStopRepository;
+import com.example.demo.service.GoogleMapsService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,227 +19,321 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class RouteService {
 
     @Autowired
     private RouteRepository routeRepository;
-
     @Autowired
     private RouteStopRepository routeStopRepository;
-
     @Autowired
     private DeviceRepo deviceRepository;
-
     @Autowired
     private InterfaceRepo interfaceRepository;
-
     @Autowired
     private GoogleMapsService googleMapsService;
 
-    public RouteResponseDto generateRoute(UUID interfaceId, String vehicleId, String username, String startLocation,
-            String endLocation) {
-        Interface interfaceEntity = interfaceRepository.findById(interfaceId)
-                .orElseThrow(() -> new EntityNotFoundException("Interface not found with ID: " + interfaceId));
+    /* =========================================================
+       PUBLIC API
+       ========================================================= */
 
-        if (interfaceEntity.getCreatedBy() == null || !interfaceEntity.getCreatedBy().getUsername().equals(username)) {
-            throw new org.springframework.security.access.AccessDeniedException(
-                    "User does not have access to this interface");
-        }
+    public RouteResponseDto generateRoute(
+            UUID interfaceId,
+            String vehicleId,
+            String username,
+            String startLocation,
+            String endLocation
+    ) {
 
-        // 1. Fetch devices with fill level > 80%
-        List<Device> devices = deviceRepository.findByInterfaceEntityId(interfaceId).stream()
-                .filter(d -> d.getLastValue1() != null && d.getLastValue1().compareTo(BigDecimal.valueOf(80)) > 0)
-                .collect(Collectors.toList());
+        validateInputs(interfaceId, username, startLocation, endLocation);
 
-        if (devices.isEmpty()) {
-            throw new IllegalStateException("No devices found requiring collection for this interface.");
-        }
+        Interface iface = getAuthorizedInterface(interfaceId, username);
 
-        // 2. Optimize Route
-        List<Device> optimizedOrder = optimizeRoute(devices, startLocation);
+        List<Device> devices = getDevicesRequiringCollection(interfaceId);
 
-        // 3. Get Polyline and Total Metrics from Directions API
-        List<String> waypoints = optimizedOrder.stream().map(Device::getLocation).collect(Collectors.toList());
-        if (startLocation != null)
-            waypoints.add(0, startLocation);
-        if (endLocation != null)
-            waypoints.add(endLocation);
+        List<Device> optimizedOrder =
+                optimizeRoute(devices, startLocation, endLocation);
 
-        Map<String, Object> directions = googleMapsService.getDirections(waypoints);
-        String polyline = "";
-        double totalDistanceMeters = 0;
-        double totalDurationSeconds = 0;
+        DirectionsData directions =
+                fetchDirections(startLocation, endLocation, optimizedOrder);
 
-        if (directions != null && "OK".equals(directions.get("status"))) {
-            List<Map<String, Object>> routes = (List<Map<String, Object>>) directions.get("routes");
-            if (!routes.isEmpty()) {
-                Map<String, Object> routeObj = routes.get(0);
-                Map<String, Object> overviewPolyline = (Map<String, Object>) routeObj.get("overview_polyline");
-                if (overviewPolyline != null) {
-                    polyline = (String) overviewPolyline.get("points");
-                }
+        Route route = saveRoute(iface, vehicleId, directions,startLocation, endLocation);
 
-                List<Map<String, Object>> legs = (List<Map<String, Object>>) routeObj.get("legs");
-                System.out.println("DEBUG: Found " + legs.size() + " legs in route."); // LOG
-                for (Map<String, Object> leg : legs) {
-                    Map<String, Object> dist = (Map<String, Object>) leg.get("distance");
-                    Map<String, Object> dur = (Map<String, Object>) leg.get("duration");
-                    double d = ((Number) dist.get("value")).doubleValue();
-                    double t = ((Number) dur.get("value")).doubleValue();
-                    System.out.println("DEBUG: Leg Distance=" + d + ", Duration=" + t); // LOG
-                    totalDistanceMeters += d;
-                    totalDurationSeconds += t;
-                }
-            } else {
-                System.out.println("DEBUG: Routes list from Google API is EMPTY."); // LOG
-            }
-        } else {
-            System.out.println("DEBUG: Directions API response is null or status is NOT OK."); // LOG
-        }
-
-        System.out.println(
-                "DEBUG: Final Calculation -> Distance: " + totalDistanceMeters + ", Duration: " + totalDurationSeconds); // LOG
-
-        // 4. Save Route
-        Route route = new Route();
-        route.setInterfaceEntity(interfaceEntity);
-        route.setVehicleId(vehicleId);
-        route.setTotalDistance(totalDistanceMeters);
-        route.setTotalDuration(totalDurationSeconds);
-        route.setStatus(RouteStatus.PLANNED);
-        route.setPolyline(polyline);
-        route = routeRepository.save(route);
-
-        // 5. Save Stops
-        List<RouteStop> stops = new ArrayList<>();
-        int order = 1;
-        for (Device device : optimizedOrder) {
-            RouteStop stop = new RouteStop();
-            stop.setRoute(route);
-            stop.setDevice(device);
-            stop.setStopOrder(order++);
-            stop.setEstimatedArrival(LocalDateTime.now().plusSeconds((long) totalDurationSeconds));
-            stops.add(stop);
-        }
-        routeStopRepository.saveAll(stops);
+        List<RouteStop> stops =
+                saveRouteStops(route, optimizedOrder, directions);
 
         return mapToDto(route, stops);
-    }
-
-    private RouteResponseDto mapToDto(Route route, List<RouteStop> stops) {
-        RouteResponseDto dto = new RouteResponseDto();
-        dto.setRouteId(route.getId());
-        dto.setVehicleId(route.getVehicleId());
-        dto.setTotalDistance(route.getTotalDistance() / 1000.0); // Convert to km
-        dto.setTotalDuration(route.getTotalDuration() / 60.0); // Convert to minutes
-        dto.setPolyline(route.getPolyline());
-
-        List<RouteStopDto> stopDtos = stops.stream().map(stop -> {
-            RouteStopDto stopDto = new RouteStopDto();
-            stopDto.setSequence(stop.getStopOrder());
-            stopDto.setDeviceId(stop.getDevice().getId());
-            stopDto.setName(stop.getDevice().getName());
-            stopDto.setLocation(stop.getDevice().getLocation());
-            stopDto.setFillLevel(
-                    stop.getDevice().getLastValue1() != null ? stop.getDevice().getLastValue1().doubleValue() : 0.0);
-            stopDto.setType("PICKUP");
-            return stopDto;
-        }).collect(Collectors.toList());
-
-        dto.setStops(stopDtos);
-        return dto;
-    }
-
-    private List<Device> optimizeRoute(List<Device> devices, String startLocation) {
-        if (devices.isEmpty())
-            return new ArrayList<>();
-
-        // 1. Prepare locations for Matrix API
-        List<String> locations = devices.stream()
-                .map(Device::getLocation)
-                .collect(Collectors.toList());
-
-        // 2. Fetch Distance Matrix
-        double[][] distanceMatrix = googleMapsService.getDistanceMatrix(locations);
-
-        List<Device> unvisited = new ArrayList<>(devices);
-        List<Device> path = new ArrayList<>();
-
-        // 3. Route = [StartNode]
-        // Assuming the first device is the StartNode/Depot
-        Device startNode = unvisited.remove(0);
-        path.add(startNode);
-        Device currentNode = startNode;
-
-        // 4. WHILE Unvisited is NOT Empty:
-        while (!unvisited.isEmpty()) {
-            Device nextNode = null;
-            double minDistance = Double.MAX_VALUE;
-
-            int currentIndex = devices.indexOf(currentNode);
-
-            // c. FOR EACH Bin IN Unvisited:
-            for (Device candidate : unvisited) {
-                int candidateIndex = devices.indexOf(candidate);
-
-                // Fetch real-time duration (distance) from cached Matrix
-                double distance = distanceMatrix[currentIndex][candidateIndex];
-
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    nextNode = candidate;
-                }
-            }
-
-            // d. Add NextNode to Route
-            if (nextNode != null) {
-                path.add(nextNode);
-                // e. Remove NextNode from Unvisited
-                unvisited.remove(nextNode);
-                // f. CurrentNode = NextNode
-                currentNode = nextNode;
-            } else {
-                break;
-            }
-        }
-
-        // 6. Add Depot to Route (Return to Start)
-        path.add(startNode);
-
-        return path;
     }
 
     public RouteResponseDto getRouteById(UUID routeId, String username) {
         Route route = routeRepository.findById(routeId)
-                .orElseThrow(() -> new EntityNotFoundException("Route not found with ID: " + routeId));
+                .orElseThrow(() -> new EntityNotFoundException("Route not found"));
 
-        Interface interfaceEntity = route.getInterfaceEntity();
-        if (interfaceEntity.getCreatedBy() == null || !interfaceEntity.getCreatedBy().getUsername().equals(username)) {
-            throw new org.springframework.security.access.AccessDeniedException(
-                    "User does not have access to this route");
-        }
+        authorize(route.getInterfaceEntity(), username);
 
-        List<RouteStop> stops = routeStopRepository.findByRouteIdOrderByStopOrderAsc(routeId);
+        List<RouteStop> stops =
+                routeStopRepository.findByRouteIdOrderByStopOrderAsc(routeId);
+
         return mapToDto(route, stops);
     }
 
     public List<RouteResponseDto> getRoutesByInterfaceId(UUID interfaceId, String username) {
-        Interface interfaceEntity = interfaceRepository.findById(interfaceId)
-                .orElseThrow(() -> new EntityNotFoundException("Interface not found with ID: " + interfaceId));
+        Interface iface = getAuthorizedInterface(interfaceId, username);
 
-        if (interfaceEntity.getCreatedBy() == null || !interfaceEntity.getCreatedBy().getUsername().equals(username)) {
-            throw new org.springframework.security.access.AccessDeniedException(
-                    "User does not have access to this interface");
-        }
-
-        List<Route> routes = routeRepository.findByInterfaceEntityId(interfaceId);
-        return routes.stream().map(route -> {
-            List<RouteStop> stops = routeStopRepository.findByRouteIdOrderByStopOrderAsc(route.getId());
-            return mapToDto(route, stops);
-        }).collect(Collectors.toList());
+        return routeRepository.findByInterfaceEntityId(interfaceId).stream()
+                .map(route -> {
+                    List<RouteStop> stops =
+                            routeStopRepository.findByRouteIdOrderByStopOrderAsc(route.getId());
+                    return mapToDto(route, stops);
+                })
+                .toList();
     }
 
+    /* =========================================================
+       CORE LOGIC
+       ========================================================= */
+
+    private List<Device> optimizeRoute(
+            List<Device> devices,
+            String startLocation,
+            String endLocation
+    ) {
+        if (devices.isEmpty()) return List.of();
+
+        List<String> allLocations = new ArrayList<>();
+        allLocations.add(startLocation);
+        devices.forEach(d -> allLocations.add(d.getLocation()));
+        allLocations.add(endLocation);
+
+        double[][] matrix =
+                googleMapsService.getDistanceMatrix(allLocations);
+
+        Set<Integer> unvisited = new HashSet<>();
+        for (int i = 1; i <= devices.size(); i++) unvisited.add(i);
+
+        List<Device> path = new ArrayList<>();
+        int currentIdx = 0;
+
+        while (!unvisited.isEmpty()) {
+            int nearest = -1;
+            double min = Double.MAX_VALUE;
+
+            for (int idx : unvisited) {
+                double dist = matrix[currentIdx][idx];
+                if (dist < min) {
+                    min = dist;
+                    nearest = idx;
+                }
+            }
+
+            currentIdx = nearest;
+            unvisited.remove(nearest);
+            path.add(devices.get(nearest - 1));
+        }
+
+        return path;
+    }
+
+    /* =========================================================
+       GOOGLE DIRECTIONS
+       ========================================================= */
+
+    private DirectionsData fetchDirections(
+            String start,
+            String end,
+            List<Device> order
+    ) {
+
+        List<String> waypoints = new ArrayList<>();
+        waypoints.add(start);
+        order.forEach(d -> waypoints.add(d.getLocation()));
+        waypoints.add(end);
+
+        Map<String, Object> response =
+                googleMapsService.getDirections(waypoints);
+
+        if (response == null || !"OK".equals(response.get("status"))) {
+            throw new IllegalStateException("Directions API failed");
+        }
+
+        Map<String, Object> route =
+                ((List<Map<String, Object>>) response.get("routes")).get(0);
+
+        List<Map<String, Object>> legs =
+                (List<Map<String, Object>>) route.get("legs");
+
+        String polyline =
+                (String) ((Map<?, ?>) route.get("overview_polyline")).get("points");
+
+        double totalDistance = 0;
+        double totalDuration = 0;
+
+        for (Map<String, Object> leg : legs) {
+            totalDistance += ((Number)
+                    ((Map<?, ?>) leg.get("distance")).get("value")).doubleValue();
+            totalDuration += ((Number)
+                    ((Map<?, ?>) leg.get("duration")).get("value")).doubleValue();
+        }
+
+        return new DirectionsData(polyline, totalDistance, totalDuration, legs);
+    }
+
+    /* =========================================================
+       PERSISTENCE
+       ========================================================= */
+
+    private Route saveRoute(
+            Interface iface,
+            String vehicleId,
+            DirectionsData data,
+            String startLocation,
+            String endLocation
+    ) {
+        Route route = new Route();
+        route.setInterfaceEntity(iface);
+        route.setVehicleId(vehicleId);
+        route.setStartLocation(startLocation);
+        route.setEndLocation(endLocation);
+        route.setTotalDistance(data.totalDistance);
+        route.setTotalDuration(data.totalDuration);
+        route.setStatus(RouteStatus.PLANNED);
+        route.setPolyline(data.polyline);
+        return routeRepository.save(route);
+    }
+
+    private List<RouteStop> saveRouteStops(
+            Route route,
+            List<Device> order,
+            DirectionsData data
+    ) {
+
+        List<RouteStop> stops = new ArrayList<>();
+        double cumulativeSeconds = 0;
+
+        for (int i = 0; i < order.size(); i++) {
+
+            Map<String, Object> leg = data.legs.get(i);
+            double legSeconds = ((Number)
+                    ((Map<?, ?>) leg.get("duration")).get("value")).doubleValue();
+
+            cumulativeSeconds += legSeconds;
+
+            RouteStop stop = new RouteStop();
+            stop.setRoute(route);
+            stop.setDevice(order.get(i));
+            stop.setStopOrder(i + 1);
+            stop.setEstimatedArrival(
+                    LocalDateTime.now().plusSeconds((long) cumulativeSeconds)
+            );
+
+            stops.add(stop);
+        }
+
+        return routeStopRepository.saveAll(stops);
+    }
+
+    /* =========================================================
+       HELPERS
+       ========================================================= */
+
+    private Interface getAuthorizedInterface(UUID id, String username) {
+        Interface iface = interfaceRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Interface not found"));
+        authorize(iface, username);
+        return iface;
+    }
+
+    private void authorize(Interface iface, String username) {
+        if (iface.getCreatedBy() == null ||
+                !iface.getCreatedBy().getUsername().equals(username)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "User does not have access");
+        }
+    }
+
+    private List<Device> getDevicesRequiringCollection(UUID interfaceId) {
+        List<Device> devices =
+                deviceRepository.findByInterfaceEntityId(interfaceId).stream()
+                        .filter(d ->
+                                (d.getLastValue1() != null &&
+                                        d.getLastValue1().compareTo(BigDecimal.valueOf(70)) > 0)
+                                        || (d.getLastValue2() != null &&
+                                        d.getLastValue2().compareTo(BigDecimal.valueOf(70)) > 0)
+                        )
+                        .toList();
+
+        if (devices.isEmpty()) {
+            throw new IllegalStateException("No devices require collection");
+        }
+        return devices;
+    }
+
+    private void validateInputs(
+            UUID interfaceId,
+            String username,
+            String start,
+            String end
+    ) {
+        Objects.requireNonNull(interfaceId, "Interface ID required");
+        Objects.requireNonNull(username, "Username required");
+        Objects.requireNonNull(start, "Start location required");
+        Objects.requireNonNull(end, "End location required");
+    }
+
+    /* =========================================================
+       DTO MAPPING (UNCHANGED BEHAVIOR)
+       ========================================================= */
+
+    public RouteResponseDto mapToDto(Route route, List<RouteStop> stops) {
+        RouteResponseDto dto = new RouteResponseDto();
+        dto.setRouteId(route.getId());
+        dto.setVehicleId(route.getVehicleId());
+        dto.setTotalDistance(route.getTotalDistance() / 1000.0);
+        dto.setTotalDuration(route.getTotalDuration() / 60.0);
+        dto.setPolyline(route.getPolyline());
+        dto.setStatus(route.getStatus().name());
+        dto.setStartLocation(route.getStartLocation());
+        dto.setStops(stops.stream().map(this::mapStopToDto).toList());
+        dto.setEndLocation(route.getEndLocation());
+        return dto;
+    }
+
+    public RouteStopDto mapStopToDto(RouteStop stop) {
+        RouteStopDto dto = new RouteStopDto();
+        dto.setSequence(stop.getStopOrder());
+        dto.setDeviceId(stop.getDevice().getId());
+        dto.setName(stop.getDevice().getName());
+        dto.setLocation(stop.getDevice().getLocation());
+        dto.setFillLevel(
+                Math.max(
+                        stop.getDevice().getLastValue1() != null
+                                ? stop.getDevice().getLastValue1().doubleValue() : 0.0,
+                        stop.getDevice().getLastValue2() != null
+                                ? stop.getDevice().getLastValue2().doubleValue() : 0.0
+                )
+        );
+        dto.setType("PICKUP");
+        dto.setStatus(
+                stop.getStatus() != null ? stop.getStatus().name() : "PENDING");
+        return dto;
+    }
+
+    /* =========================================================
+       INTERNAL DATA HOLDER
+       ========================================================= */
+
+    private static class DirectionsData {
+        String polyline;
+        double totalDistance;
+        double totalDuration;
+        List<Map<String, Object>> legs;
+
+        DirectionsData(String p, double d, double t, List<Map<String, Object>> l) {
+            polyline = p;
+            totalDistance = d;
+            totalDuration = t;
+            legs = l;
+        }
+    }
 }

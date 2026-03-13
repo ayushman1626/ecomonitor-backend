@@ -29,6 +29,12 @@ public class Interface {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "start_location", length = 255)
+    private String startLocation;
+
+    @Column(name = "end_location", length = 255)
+    private String endLocation;
+
     @ManyToOne
     @JoinColumn(name = "created_by", referencedColumnName = "id",  nullable = true)
     private User createdBy;

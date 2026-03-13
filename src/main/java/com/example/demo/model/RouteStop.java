@@ -1,5 +1,6 @@
 package com.example.demo.model;
 
+import com.example.demo.model.enums.RouteStopStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -33,6 +34,27 @@ public class RouteStop {
 
     @Column(name = "stop_order", nullable = false)
     private Integer stopOrder;
+
+    @Enumerated(EnumType.STRING)
+    private RouteStopStatus status;
+
+    @Column(name = "collected_at")
+    private LocalDateTime collectedAt;
+
+    @Column(name = "rfid_tag")
+    private String rfidTag;
+
+    @Column(name = "rfid_verified")
+    private Boolean rfidVerified;
+
+    @Column(name = "skip_reason")
+    private String skipReason;
+
+    @Column(name = "worker_lat")
+    private Double workerLat;
+
+    @Column(name = "worker_lng")
+    private Double workerLng;
 
     @Column(name = "estimated_arrival")
     private LocalDateTime estimatedArrival;

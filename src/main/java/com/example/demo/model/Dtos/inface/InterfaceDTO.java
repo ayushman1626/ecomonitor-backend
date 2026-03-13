@@ -1,6 +1,7 @@
 package com.example.demo.model.Dtos.inface;
 
 import com.example.demo.model.Interface;
+import jakarta.persistence.Table;
 import lombok.Data;
 
 @Data
@@ -13,6 +14,8 @@ public class InterfaceDTO {
     private String ownerUsername;
     private String role;          // User's role in this interface
     private String createdAt;// Created date (optional, format string)
+    private String startLocation; // Start location (optional)
+    private String endLocation;   // End location (optional)
 
     public InterfaceDTO(String id, String name, String description, String ownerId, String ownerUsername, String role, String createdAt) {
         this.id = id;
@@ -32,6 +35,8 @@ public class InterfaceDTO {
         this.ownerUsername = iface.getCreatedBy().getUsername();
         this.role = role;
         this.createdAt = iface.getCreatedAt().toString();
+        this.startLocation = iface.getStartLocation();
+        this.endLocation = iface.getEndLocation();
     }
 
     public String getId() {

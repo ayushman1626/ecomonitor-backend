@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 
 import com.example.demo.model.Dtos.inface.DeleteInterfaceRequest;
+import com.example.demo.model.Dtos.inface.InterfaceCreaterequestDto;
 import com.example.demo.model.Dtos.inface.InterfaceDTO;
 import com.example.demo.model.Dtos.inface.InterfaceWithDevicesDTO;
 import com.example.demo.model.Dtos.common.ApiResponse;
@@ -32,7 +33,7 @@ public class InterfaceController {
     @PostMapping("")
     @Operation(summary = "Create Interface")
     public ResponseEntity<ApiResponse<InterfaceDTO>> saveInterface(
-            @RequestBody Interface iface,
+            @RequestBody InterfaceCreaterequestDto iface,
             @AuthenticationPrincipal UserPrinciple userPrinciple) {
 
         if (userPrinciple == null) {

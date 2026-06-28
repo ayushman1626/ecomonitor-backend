@@ -27,12 +27,14 @@ public class CollectionController {
     @PutMapping("/{routeId}/assign")
     public ResponseEntity<ApiResponse<RouteResponseDto>> assignWorker(
             @PathVariable UUID routeId,
-            @RequestBody AssignWorkerRequest request) {
-        // Todo: verify admin/owner role
-        // Spec says: PUT /api/routes/{routeId}/assign with body { workerId: "..." }
-        // My AssignWorkerRequest has workerId.
+            @RequestBody AssignWorkerRequest request,
+            @AuthenticationPrincipal UserPrinciple userPrinciple) {
+        if (userPrinciple == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<>(false, "User not authenticated.", null));
+        }
 
-        RouteResponseDto route = collectionService.assignWorker(routeId, request.getWorkerId());
+        RouteResponseDto route = collectionService.assignWorker(routeId, request.getWorkerId(), userPrinciple.getUsername());
         return ResponseEntity.ok(new ApiResponse<>(true, "Worker assigned successfully", route));
     }
 
@@ -99,8 +101,14 @@ public class CollectionController {
     }
 
     @GetMapping("/{routeId}/audit-logs")
-    public ResponseEntity<ApiResponse<List<CollectionLog>>> getAuditLogs(@PathVariable UUID routeId) {
-        List<CollectionLog> logs = collectionService.getAuditLogs(routeId);
+    public ResponseEntity<ApiResponse<List<CollectionLog>>> getAuditLogs(
+            @PathVariable UUID routeId,
+            @AuthenticationPrincipal UserPrinciple userPrinciple) {
+        if (userPrinciple == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<>(false, "User not authenticated.", null));
+        }
+        List<CollectionLog> logs = collectionService.getAuditLogs(routeId, userPrinciple.getUsername());
         return ResponseEntity.ok(new ApiResponse<>(true, "Audit logs fetched successfully", logs));
     }
 }

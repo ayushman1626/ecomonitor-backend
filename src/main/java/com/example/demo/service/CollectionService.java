@@ -28,11 +28,14 @@ public class CollectionService {
     private final UserRepo userRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final RouteService routeService;
+    private final UserInterfaceRepo userInterfaceRepo;
 
     @Transactional
-    public RouteResponseDto assignWorker(UUID routeId, UUID workerId) {
+    public RouteResponseDto assignWorker(UUID routeId, UUID workerId, String currentUsername) {
         Route route = routeRepository.findById(routeId)
                 .orElseThrow(() -> new EntityNotFoundException("Route not found"));
+
+        verifyAdminOrOwner(route, currentUsername);
 
         if (route.getStatus() != RouteStatus.PLANNED) {
             throw new IllegalStateException("Route must be in PLANNED status to assign a worker");
@@ -174,8 +177,28 @@ public class CollectionService {
         return routeService.mapToDto(savedRoute, stops);
     }
 
-    public List<CollectionLog> getAuditLogs(UUID routeId) {
+    public List<CollectionLog> getAuditLogs(UUID routeId, String currentUsername) {
+        Route route = routeRepository.findById(routeId)
+                .orElseThrow(() -> new EntityNotFoundException("Route not found"));
+        verifyAdminOrOwner(route, currentUsername);
         return collectionLogRepository.findByRouteId(routeId);
+    }
+
+    private void verifyAdminOrOwner(Route route, String username) {
+        User user = userRepository.findByUsername(username);
+        if (user == null) {
+            throw new org.springframework.security.access.AccessDeniedException("User not found");
+        }
+        Interface iface = route.getInterfaceEntity();
+        if (iface.getCreatedBy() != null && iface.getCreatedBy().getUsername().equals(username)) {
+            return; // Owner has access
+        }
+        boolean isAdmin = userInterfaceRepo.findByUserAndInterfaceId(user, iface)
+                .map(ui -> ui.getRole() == com.example.demo.model.enums.Role.ADMIN)
+                .orElse(false);
+        if (!isAdmin) {
+            throw new org.springframework.security.access.AccessDeniedException("User does not have ADMIN or OWNER access on this interface");
+        }
     }
 
     // Helper to get assigned routes for a worker

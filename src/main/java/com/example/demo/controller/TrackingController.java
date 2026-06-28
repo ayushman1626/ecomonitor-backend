@@ -6,6 +6,8 @@ import com.example.demo.model.VehicleLog;
 import com.example.demo.service.TrackingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.example.demo.model.UserPrinciple;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,8 +27,14 @@ public class TrackingController {
     }
 
     @GetMapping("/route/{routeId}/logs")
-    public ResponseEntity<ApiResponse<List<VehicleLog>>> getVehicleLogs(@PathVariable UUID routeId) {
-        List<VehicleLog> logs = trackingService.getVehicleLogsForRoute(routeId);
+    public ResponseEntity<ApiResponse<List<VehicleLog>>> getVehicleLogs(
+            @PathVariable UUID routeId,
+            @AuthenticationPrincipal UserPrinciple userPrinciple) {
+        if (userPrinciple == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<>(false, "User not authenticated.", null));
+        }
+        List<VehicleLog> logs = trackingService.getVehicleLogsForRoute(routeId, userPrinciple.getUsername());
         return ResponseEntity.ok(new ApiResponse<>(true, "Vehicle logs fetched", logs));
     }
 }

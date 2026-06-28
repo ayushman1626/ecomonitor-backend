@@ -40,18 +40,20 @@ public class UserController {
     @GetMapping("api/users/search")
     @Operation(summary = "Search users by prefix")
     public ResponseEntity<ApiResponse<List<UserDTO>>> searchUsers(
-            @RequestParam("q") String prefix,
+            @RequestParam(value = "q", required = false) String q,
+            @RequestParam(value = "query", required = false) String query,
             @AuthenticationPrincipal UserPrinciple userPrinciple
     ) {
         if (userPrinciple == null)
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ApiResponse<>(false, "UNAUTHORIZED USER!!", null));
-        if (prefix == null || prefix.isEmpty())
+
+        String prefix = (q != null && !q.isEmpty()) ? q : query;
+        if (prefix == null || prefix.trim().isEmpty())
             return ResponseEntity.badRequest()
                     .body(new ApiResponse<>(false, "Search prefix cannot be empty", null));
 
-
-        List<UserDTO> users = userService.searchUsers(prefix,userPrinciple.getUsername());
+        List<UserDTO> users = userService.searchUsers(prefix.trim(), userPrinciple.getUsername());
 
         if (users.isEmpty()) {
             return ResponseEntity.ok(new ApiResponse<>(true, "No users found", users));

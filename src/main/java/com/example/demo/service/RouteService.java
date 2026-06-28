@@ -7,10 +7,12 @@ import com.example.demo.model.Interface;
 import com.example.demo.model.Route;
 import com.example.demo.model.RouteStop;
 import com.example.demo.model.enums.RouteStatus;
+import com.example.demo.model.User;
 import com.example.demo.repo.DeviceRepo;
 import com.example.demo.repo.InterfaceRepo;
 import com.example.demo.repo.RouteRepository;
 import com.example.demo.repo.RouteStopRepository;
+import com.example.demo.repo.UserRepo;
 import com.example.demo.service.GoogleMapsService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +35,8 @@ public class RouteService {
     private InterfaceRepo interfaceRepository;
     @Autowired
     private GoogleMapsService googleMapsService;
+    @Autowired
+    private UserRepo userRepository;
 
     /* =========================================================
        PUBLIC API
@@ -292,15 +296,26 @@ public class RouteService {
         dto.setTotalDistance(route.getTotalDistance() / 1000.0);
         dto.setTotalDuration(route.getTotalDuration() / 60.0);
         dto.setPolyline(route.getPolyline());
-        dto.setStatus(route.getStatus().name());
+        dto.setStatus(route.getStatus() != null ? route.getStatus().name() : null);
         dto.setStartLocation(route.getStartLocation());
         dto.setStops(stops.stream().map(this::mapStopToDto).toList());
         dto.setEndLocation(route.getEndLocation());
+        
+        dto.setAssignedWorkerId(route.getAssignedWorkerId());
+        if (route.getAssignedWorkerId() != null) {
+            userRepository.findById(route.getAssignedWorkerId())
+                    .ifPresent(user -> dto.setAssignedWorkerName(user.getFullName()));
+        }
+        dto.setStartedAt(route.getStartedAt() != null ? route.getStartedAt().toString() : null);
+        dto.setCompletedAt(route.getCompletedAt() != null ? route.getCompletedAt().toString() : null);
+        dto.setTotalCollected(route.getTotalCollected() != null ? route.getTotalCollected() : 0);
+        dto.setTotalSkipped(route.getTotalSkipped() != null ? route.getTotalSkipped() : 0);
         return dto;
     }
 
     public RouteStopDto mapStopToDto(RouteStop stop) {
         RouteStopDto dto = new RouteStopDto();
+        dto.setStopId(stop.getId());
         dto.setSequence(stop.getStopOrder());
         dto.setDeviceId(stop.getDevice().getId());
         dto.setName(stop.getDevice().getName());
@@ -316,6 +331,13 @@ public class RouteService {
         dto.setType("PICKUP");
         dto.setStatus(
                 stop.getStatus() != null ? stop.getStatus().name() : "PENDING");
+        
+        dto.setCollectedAt(stop.getCollectedAt() != null ? stop.getCollectedAt().toString() : null);
+        dto.setRfidTag(stop.getRfidTag());
+        dto.setRfidVerified(stop.getRfidVerified());
+        dto.setSkipReason(stop.getSkipReason());
+        dto.setWorkerLat(stop.getWorkerLat());
+        dto.setWorkerLng(stop.getWorkerLng());
         return dto;
     }
 

@@ -3,7 +3,10 @@ package com.example.demo.controller;
 import com.example.demo.model.Dtos.common.ApiResponse;
 import com.example.demo.model.Dtos.route.RouteRequestDto;
 import com.example.demo.model.Dtos.route.RouteResponseDto;
+import com.example.demo.model.User;
 import com.example.demo.model.UserPrinciple;
+import com.example.demo.repo.UserRepo;
+import com.example.demo.service.CollectionService;
 import com.example.demo.service.RouteService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +24,12 @@ public class RouteController {
 
     @Autowired
     private RouteService routeService;
+
+    @Autowired
+    private UserRepo userRepository;
+
+    @Autowired
+    private CollectionService collectionService;
 
     @PostMapping("/optimize")
     public ResponseEntity<ApiResponse<RouteResponseDto>> optimizeRoute(
@@ -67,5 +76,18 @@ public class RouteController {
 
         List<RouteResponseDto> routes = routeService.getRoutesByInterfaceId(interfaceId, userPrinciple.getUsername());
         return ResponseEntity.ok(new ApiResponse<>(true, "Routes fetched successfully", routes));
+    }
+
+    @GetMapping("/assigned")
+    public ResponseEntity<ApiResponse<List<RouteResponseDto>>> getMyAssignedRoutes(
+            @AuthenticationPrincipal UserPrinciple userPrinciple) {
+
+        User user = userRepository.findByUsername(userPrinciple.getUsername());
+        if (user == null) {
+            throw new RuntimeException("User not found");
+        }
+
+        List<RouteResponseDto> routes = collectionService.getAssignedRoutes(user.getId());
+        return ResponseEntity.ok(new ApiResponse<>(true, "Assigned routes fetched successfully", routes));
     }
 }

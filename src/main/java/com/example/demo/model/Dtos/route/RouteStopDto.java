@@ -10,7 +10,8 @@ import java.util.UUID;
 @Data
 @Getter
 @Setter
-public class RouteStopDto {
+public class  RouteStopDto {
+    private UUID stopId;
     private Integer sequence;
     private UUID deviceId;
     private String name;

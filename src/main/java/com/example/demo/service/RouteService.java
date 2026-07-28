@@ -22,8 +22,23 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 
+import com.example.demo.model.Vehicle;
+import com.example.demo.repo.VehicleRepository;
+import com.example.demo.repo.CollectionLogRepository;
+import com.example.demo.repo.UserInterfaceRepo;
+import org.springframework.transaction.annotation.Transactional;
+
 @Service
 public class RouteService {
+
+    @Autowired
+    private VehicleRepository vehicleRepository;
+
+    @Autowired
+    private RoutingService routingService;
+
+    @Autowired
+    private CvrpSolverService cvrpSolverService;
 
     @Autowired
     private RouteRepository routeRepository;
@@ -37,11 +52,157 @@ public class RouteService {
     private GoogleMapsService googleMapsService;
     @Autowired
     private UserRepo userRepository;
+    @Autowired
+    private CollectionLogRepository collectionLogRepository;
+    @Autowired
+    private UserInterfaceRepo userInterfaceRepo;
+
+    @Transactional
+    public void deleteRoute(UUID routeId, String username) {
+        Route route = routeRepository.findById(routeId)
+                .orElseThrow(() -> new EntityNotFoundException("Route not found"));
+
+        verifyAdminOrOwner(route, username);
+
+        // Delete collection logs associated with the route
+        var collectionLogs = collectionLogRepository.findByRouteId(routeId);
+        collectionLogRepository.deleteAll(collectionLogs);
+
+        // Delete route stops associated with the route
+        var routeStops = routeStopRepository.findByRouteIdOrderByStopOrderAsc(routeId);
+        routeStopRepository.deleteAll(routeStops);
+
+        // Delete the route itself
+        routeRepository.delete(route);
+    }
+
+    private void verifyAdminOrOwner(Route route, String username) {
+        User user = userRepository.findByUsername(username);
+        if (user == null) {
+            throw new org.springframework.security.access.AccessDeniedException("User not found");
+        }
+        Interface iface = route.getInterfaceEntity();
+        if (iface.getCreatedBy() != null && iface.getCreatedBy().getUsername().equals(username)) {
+            return; // Owner has access
+        }
+        boolean isAdmin = userInterfaceRepo.findByUserAndInterfaceId(user, iface)
+                .map(ui -> ui.getRole() == com.example.demo.model.enums.Role.ADMIN)
+                .orElse(false);
+        if (!isAdmin) {
+            throw new org.springframework.security.access.AccessDeniedException("User does not have ADMIN or OWNER access on this interface");
+        }
+    }
 
     /* =========================================================
        PUBLIC API
        ========================================================= */
 
+    public List<RouteResponseDto> generateMultipleRoutes(
+            UUID interfaceId,
+            String username,
+            String startLocation,
+            String endLocation
+    ) {
+        Interface iface = getAuthorizedInterface(interfaceId, username);
+
+        String startLoc = (startLocation != null && !startLocation.isEmpty()) ? startLocation : iface.getStartLocation();
+        String endLoc = (endLocation != null && !endLocation.isEmpty()) ? endLocation : iface.getEndLocation();
+
+        if (startLoc == null || startLoc.trim().isEmpty() || endLoc == null || endLoc.trim().isEmpty()) {
+            throw new IllegalArgumentException("Start and End locations must be set on the Interface or provided in the request.");
+        }
+
+        List<Vehicle> activeVehicles = vehicleRepository.findByInterfaceEntityIdAndIsActiveTrue(interfaceId);
+        if (activeVehicles.isEmpty()) {
+            throw new IllegalStateException("No active vehicles found for this interface.");
+        }
+
+        List<Device> devices = getDevicesRequiringCollection(interfaceId);
+
+        // Build list of coordinates: index 0 is depot, 1..N are devices
+        List<double[]> coords = new ArrayList<>();
+        coords.add(parseCoords(startLoc));
+        for (Device d : devices) {
+            coords.add(parseCoords(d.getLocation()));
+        }
+
+        int numLocations = coords.size();
+        double[][] distanceMatrix = new double[numLocations][numLocations];
+        for (int i = 0; i < numLocations; i++) {
+            for (int j = 0; j < numLocations; j++) {
+                if (i == j) {
+                    distanceMatrix[i][j] = 0;
+                } else {
+                    distanceMatrix[i][j] = routingService.calculateDistance(
+                            coords.get(i)[0], coords.get(i)[1],
+                            coords.get(j)[0], coords.get(j)[1]
+                    );
+                }
+            }
+        }
+
+        long[] demands = new long[numLocations];
+        demands[0] = 0; // Depot
+        for (int i = 1; i < numLocations; i++) {
+            Device d = devices.get(i - 1);
+            double fillPercentage = Math.max(
+                    d.getLastValue1() != null ? d.getLastValue1().doubleValue() : 0.0,
+                    d.getLastValue2() != null ? d.getLastValue2().doubleValue() : 0.0
+            );
+            double capacity = d.getMaxCapacity() != null ? d.getMaxCapacity() : 100.0;
+            demands[i] = (long) Math.round((fillPercentage / 100.0) * capacity);
+        }
+
+        int numVehicles = activeVehicles.size();
+        long[] vehicleCapacities = new long[numVehicles];
+        for (int i = 0; i < numVehicles; i++) {
+            vehicleCapacities[i] = (long) Math.round(activeVehicles.get(i).getCapacity());
+        }
+
+        CvrpSolverService.SolverResult solverResult = cvrpSolverService.solve(
+                distanceMatrix, demands, vehicleCapacities, 15
+        );
+
+        List<RouteResponseDto> generatedRoutes = new ArrayList<>();
+
+        for (CvrpSolverService.VehicleRoute r : solverResult.routes) {
+            if (r.nodeIndices.isEmpty()) {
+                continue; // Skip idle vehicles
+            }
+
+            Vehicle vehicle = activeVehicles.get(r.vehicleIndex);
+            List<Device> routeDevices = new ArrayList<>();
+            for (int nodeIdx : r.nodeIndices) {
+                routeDevices.add(devices.get(nodeIdx - 1));
+            }
+
+            DirectionsData directions = fetchLocalDirections(startLoc, endLoc, routeDevices);
+
+            Route route = new Route();
+            route.setInterfaceEntity(iface);
+            route.setVehicle(vehicle);
+            route.setStartLocation(startLoc);
+            route.setEndLocation(endLoc);
+            route.setTotalDistance(directions.totalDistance);
+            route.setTotalDuration(directions.totalDuration);
+            route.setStatus(RouteStatus.PLANNED);
+            route.setPolyline(directions.polyline);
+
+            if (vehicle.getDefaultDriver() != null) {
+                route.setAssignedWorkerId(vehicle.getDefaultDriver().getId());
+                route.setStatus(RouteStatus.ASSIGNED);
+            }
+
+            Route savedRoute = routeRepository.save(route);
+            List<RouteStop> stops = saveRouteStops(savedRoute, routeDevices, directions);
+
+            generatedRoutes.add(mapToDto(savedRoute, stops));
+        }
+
+        return generatedRoutes;
+    }
+
+    @Deprecated
     public RouteResponseDto generateRoute(
             UUID interfaceId,
             String vehicleId,
@@ -49,25 +210,120 @@ public class RouteService {
             String startLocation,
             String endLocation
     ) {
+        List<RouteResponseDto> routes = generateMultipleRoutes(interfaceId, username, startLocation, endLocation);
+        if (routes.isEmpty()) {
+            throw new IllegalStateException("No routes could be generated.");
+        }
+        return routes.get(0);
+    }
 
-        validateInputs(interfaceId, username, startLocation, endLocation);
+    private double[] parseCoords(String loc) {
+        String[] parts = loc.split(",");
+        return new double[] {
+                Double.parseDouble(parts[0].trim()),
+                Double.parseDouble(parts[1].trim())
+        };
+    }
 
-        Interface iface = getAuthorizedInterface(interfaceId, username);
+    private DirectionsData fetchLocalDirections(
+            String start,
+            String end,
+            List<Device> order
+    ) {
+        List<String> waypoints = new ArrayList<>();
+        waypoints.add(start);
+        order.forEach(d -> waypoints.add(d.getLocation()));
+        waypoints.add(end);
 
-        List<Device> devices = getDevicesRequiringCollection(interfaceId);
+        List<Map<String, Object>> legs = new ArrayList<>();
+        double totalDistance = 0;
+        double totalDuration = 0;
+        
+        com.graphhopper.util.PointList allPoints = new com.graphhopper.util.PointList(100, false);
 
-        List<Device> optimizedOrder =
-                optimizeRoute(devices, startLocation, endLocation);
+        for (int i = 0; i < waypoints.size() - 1; i++) {
+            double[] from = parseCoords(waypoints.get(i));
+            double[] to = parseCoords(waypoints.get(i + 1));
+            
+            RoutingService.RouteInfo legInfo = routingService.calculateRoute(from[0], from[1], to[0], to[1]);
+            
+            totalDistance += legInfo.distanceMeters;
+            totalDuration += legInfo.timeSeconds;
+            
+            decodePolylineIntoPointList(legInfo.polyline, allPoints);
 
-        DirectionsData directions =
-                fetchDirections(startLocation, endLocation, optimizedOrder);
+            Map<String, Object> legMap = new HashMap<>();
+            Map<String, Object> distanceMap = new HashMap<>();
+            distanceMap.put("value", legInfo.distanceMeters);
+            Map<String, Object> durationMap = new HashMap<>();
+            durationMap.put("value", legInfo.timeSeconds);
+            
+            legMap.put("distance", distanceMap);
+            legMap.put("duration", durationMap);
+            legs.add(legMap);
+        }
 
-        Route route = saveRoute(iface, vehicleId, directions,startLocation, endLocation);
+        String polyline = encodePointList(allPoints);
+        return new DirectionsData(polyline, totalDistance, totalDuration, legs);
+    }
 
-        List<RouteStop> stops =
-                saveRouteStops(route, optimizedOrder, directions);
+    private void decodePolylineIntoPointList(String encoded, com.graphhopper.util.PointList points) {
+        int index = 0, len = encoded.length();
+        int lat = 0, lng = 0;
 
-        return mapToDto(route, stops);
+        while (index < len) {
+            int b, shift = 0, result = 0;
+            do {
+                b = encoded.charAt(index++) - 63;
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+            lat += dlat;
+
+            shift = 0;
+            result = 0;
+            do {
+                b = encoded.charAt(index++) - 63;
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+            lng += dlng;
+
+            points.add(lat / 1e5, lng / 1e5);
+        }
+    }
+
+    private String encodePointList(com.graphhopper.util.PointList points) {
+        StringBuilder encodedString = new StringBuilder();
+        int lastLat = 0;
+        int lastLng = 0;
+        for (int i = 0; i < points.size(); i++) {
+            double lat = points.getLat(i);
+            double lng = points.getLon(i);
+            int late5 = (int) Math.round(lat * 1e5);
+            int lnge5 = (int) Math.round(lng * 1e5);
+
+            int dLat = late5 - lastLat;
+            int dLng = lnge5 - lastLng;
+
+            encodeValue(dLat, encodedString);
+            encodeValue(dLng, encodedString);
+
+            lastLat = late5;
+            lastLng = lnge5;
+        }
+        return encodedString.toString();
+    }
+
+    private void encodeValue(int value, StringBuilder encodedString) {
+        value = value < 0 ? ~(value << 1) : value << 1;
+        while (value >= 0x20) {
+            encodedString.append(Character.toChars((0x20 | (value & 0x1f)) + 63));
+            value >>= 5;
+        }
+        encodedString.append(Character.toChars(value + 63));
     }
 
     public RouteResponseDto getRouteById(UUID routeId, String username) {
@@ -85,7 +341,19 @@ public class RouteService {
     public List<RouteResponseDto> getRoutesByInterfaceId(UUID interfaceId, String username) {
         Interface iface = getAuthorizedInterface(interfaceId, username);
 
-        return routeRepository.findByInterfaceEntityId(interfaceId).stream()
+        return routeRepository.findByInterfaceEntityIdAndStatusNot(interfaceId, RouteStatus.COMPLETED).stream()
+                .map(route -> {
+                    List<RouteStop> stops =
+                            routeStopRepository.findByRouteIdOrderByStopOrderAsc(route.getId());
+                    return mapToDto(route, stops);
+                })
+                .toList();
+    }
+
+    public List<RouteResponseDto> getCompletedRoutesByInterfaceId(UUID interfaceId, String username) {
+        Interface iface = getAuthorizedInterface(interfaceId, username);
+
+        return routeRepository.findByInterfaceEntityIdAndStatus(interfaceId, RouteStatus.COMPLETED).stream()
                 .map(route -> {
                     List<RouteStop> stops =
                             routeStopRepository.findByRouteIdOrderByStopOrderAsc(route.getId());
@@ -95,7 +363,7 @@ public class RouteService {
     }
 
     /* =========================================================
-       CORE LOGIC
+       CORE LOGIC //NOT USED
        ========================================================= */
 
     private List<Device> optimizeRoute(

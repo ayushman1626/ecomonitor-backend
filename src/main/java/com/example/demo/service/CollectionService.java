@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import com.example.demo.exceptions.RfidVerificationException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -98,6 +99,10 @@ public class CollectionService {
             if (bin.getHardwareId() != null && bin.getHardwareId().equalsIgnoreCase(request.getRfidTag())) {
                 verified = true;
             }
+        }
+
+        if (!verified) {
+            throw new RfidVerificationException("RFID verification failed. Cannot collect stop without a verified RFID tag.");
         }
 
         stop.setStatus(RouteStopStatus.COLLECTED);

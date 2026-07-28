@@ -32,7 +32,7 @@ public class RouteController {
     private CollectionService collectionService;
 
     @PostMapping("/optimize")
-    public ResponseEntity<ApiResponse<RouteResponseDto>> optimizeRoute(
+    public ResponseEntity<ApiResponse<List<RouteResponseDto>>> optimizeRoute(
             @Valid @RequestBody RouteRequestDto request,
             @AuthenticationPrincipal UserPrinciple userPrinciple) {
 
@@ -41,13 +41,12 @@ public class RouteController {
                     .body(new ApiResponse<>(false, "User not authenticated.", null));
         }
 
-        RouteResponseDto route = routeService.generateRoute(
+        List<RouteResponseDto> routes = routeService.generateMultipleRoutes(
                 request.getInterfaceId(),
-                request.getVehicleId(),
                 userPrinciple.getUsername(),
                 request.getStartLocation(),
                 request.getEndLocation());
-        return ResponseEntity.ok(new ApiResponse<>(true, "Route optimized successfully", route));
+        return ResponseEntity.ok(new ApiResponse<>(true, "Routes optimized successfully", routes));
     }
 
     @GetMapping("/{routeId}")
@@ -78,9 +77,28 @@ public class RouteController {
         return ResponseEntity.ok(new ApiResponse<>(true, "Routes fetched successfully", routes));
     }
 
+    @GetMapping("/interface/{interfaceId}/completed")
+    public ResponseEntity<ApiResponse<List<RouteResponseDto>>> getCompletedRoutesByInterfaceId(
+            @PathVariable UUID interfaceId,
+            @AuthenticationPrincipal UserPrinciple userPrinciple) {
+
+        if (userPrinciple == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<>(false, "User not authenticated.", null));
+        }
+
+        List<RouteResponseDto> routes = routeService.getCompletedRoutesByInterfaceId(interfaceId, userPrinciple.getUsername());
+        return ResponseEntity.ok(new ApiResponse<>(true, "Completed routes fetched successfully", routes));
+    }
+
     @GetMapping("/assigned")
     public ResponseEntity<ApiResponse<List<RouteResponseDto>>> getMyAssignedRoutes(
             @AuthenticationPrincipal UserPrinciple userPrinciple) {
+
+        if (userPrinciple == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<>(false, "User not authenticated.", null));
+        }
 
         User user = userRepository.findByUsername(userPrinciple.getUsername());
         if (user == null) {
@@ -89,5 +107,19 @@ public class RouteController {
 
         List<RouteResponseDto> routes = collectionService.getAssignedRoutes(user.getId());
         return ResponseEntity.ok(new ApiResponse<>(true, "Assigned routes fetched successfully", routes));
+    }
+
+    @DeleteMapping("/{routeId}")
+    public ResponseEntity<ApiResponse<Void>> deleteRoute(
+            @PathVariable UUID routeId,
+            @AuthenticationPrincipal UserPrinciple userPrinciple) {
+
+        if (userPrinciple == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<>(false, "User not authenticated.", null));
+        }
+
+        routeService.deleteRoute(routeId, userPrinciple.getUsername());
+        return ResponseEntity.ok(new ApiResponse<>(true, "Route and all associated records deleted successfully", null));
     }
 }

@@ -48,6 +48,9 @@ public class Device {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = false;
 
+    @Column(name = "max_capacity")
+    private Double maxCapacity = 100.0;
+
     @Column(name = "last_value1", precision = 5, scale = 2)
     private BigDecimal lastValue1;
 

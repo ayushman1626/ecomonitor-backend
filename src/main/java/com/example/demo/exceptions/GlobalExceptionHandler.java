@@ -81,6 +81,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse<>(false, ex.getMessage(), null));
     }
 
+    // Custom
+    @ExceptionHandler(RfidVerificationException.class)
+    public ResponseEntity<ApiResponse<String>> handleRfidVerificationException(RfidVerificationException ex) {
+        log.warn(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse<>(false, ex.getMessage(), null));
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<String>> handleAccessDeniedException(AccessDeniedException ex) {
         log.warn(ex.getMessage());
@@ -97,6 +104,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<String>> handleIllegalStateException(IllegalStateException ex) {
         log.warn(ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiResponse<>(false, ex.getMessage(), null));
+    }
+
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<String>> handleMethodNotSupported(org.springframework.web.HttpRequestMethodNotSupportedException ex) {
+        log.warn(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(new ApiResponse<>(false, ex.getMessage(), null));
     }
 
     // For any other exceptions

@@ -11,7 +11,6 @@ public class RouteRequestDto {
     @NotNull(message = "Interface ID is required")
     private UUID interfaceId;
 
-    @NotBlank(message = "Vehicle ID is required")
     private String vehicleId;
 
     private String startLocation; // Optional: Depot location (Lat,Lng)

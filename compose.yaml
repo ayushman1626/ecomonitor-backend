@@ -10,6 +10,16 @@ services:
       - "8000:8000"  # Exposes the Spring Boot app on port 8000
     networks:
       - backend-net
+
+  redis:
+    image: redis:alpine
+    container_name: ecomonitor-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - backend-net
+
     # If your application requires a database or other services, add them below and update depends_on accordingly
     # depends_on:
     #   - postgres

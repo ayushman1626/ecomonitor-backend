@@ -32,8 +32,17 @@ public class Route {
     @Column(name = "end_location")
     private String endLocation;
 
-    @Column(name = "vehicle_id")
-    private String vehicleId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "vehicle_id", referencedColumnName = "id", nullable = true)
+    private Vehicle vehicle;
+
+    public String getVehicleId() {
+        return vehicle != null ? vehicle.getId().toString() : null;
+    }
+
+    public void setVehicleId(String vehicleId) {
+        // Deprecated fallback: we will use setVehicle directly
+    }
 
     @Column(name = "assigned_worker_id")
     private UUID assignedWorkerId;

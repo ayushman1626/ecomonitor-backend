@@ -41,6 +41,9 @@ public class DeviceService {
     @Autowired
     private UserRepo userRepo;
 
+    @Autowired
+    private RedisService redisService;
+
 
     public DeviceDTO createDevice(DeviceRequestDTO deviceRequest, UUID interfaceId, String username)
             throws EntityNotFoundException,AccessDeniedException{
@@ -172,6 +175,7 @@ public class DeviceService {
         // Delete the device
         sensorReadingRepo.deleteBySensor(device);
         deviceRepo.delete(device);
+        redisService.evictDevice(device.getHardwareId());
     }
 
     //Check if user(checked) has access to a device

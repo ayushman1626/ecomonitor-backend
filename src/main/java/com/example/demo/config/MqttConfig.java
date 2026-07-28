@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.annotation.ServiceActivator;
-import org.springframework.integration.channel.DirectChannel;
+import org.springframework.integration.channel.ExecutorChannel;
 import org.springframework.integration.core.MessageProducer;
 import org.springframework.integration.mqtt.core.DefaultMqttPahoClientFactory;
 import org.springframework.integration.mqtt.core.MqttPahoClientFactory;
@@ -17,6 +17,8 @@ import org.springframework.integration.mqtt.inbound.MqttPahoMessageDrivenChannel
 import org.springframework.integration.mqtt.support.DefaultPahoMessageConverter;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import java.util.concurrent.Executor;
 
 @Configuration
 public class MqttConfig {
@@ -51,11 +53,23 @@ public class MqttConfig {
         return factory;
     }
 
-    //This part listens for messages published to the MQTT broker on the topicThis part listens for messages published to the MQTT broker on the topic
+    @Bean
+    public Executor mqttExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(10);
+        executor.setMaxPoolSize(50);
+        executor.setQueueCapacity(1000);
+        executor.setThreadNamePrefix("mqtt-exec-");
+        executor.initialize();
+        return executor;
+    }
+
+    //This part listens for messages published to the MQTT broker on the topic
     @Bean
     public MessageChannel mqttInputChannel() {
-        return new DirectChannel();
+        return new ExecutorChannel(mqttExecutor());
     }
+
     @Bean
     public MqttPahoMessageDrivenChannelAdapter mqttAdapter() {
         MqttPahoMessageDrivenChannelAdapter adapter =

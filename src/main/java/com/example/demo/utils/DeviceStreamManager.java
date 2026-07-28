@@ -9,12 +9,15 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 // This class manages Server-Sent Events (SSE) for device data streams.
 @Component
 public class DeviceStreamManager {
 
     private final Map<UUID, List<SseEmitter>> emitters = new ConcurrentHashMap<>();
+    private final ExecutorService sseExecutor = Executors.newFixedThreadPool(20);
 
     public void register(UUID deviceId, SseEmitter emitter) {
         emitters.computeIfAbsent(deviceId, id -> new CopyOnWriteArrayList<>()).add(emitter);
@@ -36,20 +39,27 @@ public class DeviceStreamManager {
 
     public void broadcast(UUID deviceId, Object data) {
         List<SseEmitter> list = emitters.get(deviceId);
-        if (list == null) return;
+        if (list == null || list.isEmpty()) return;
 
-        List<SseEmitter> deadEmitters = new ArrayList<>();
+        sseExecutor.submit(() -> {
+            List<SseEmitter> deadEmitters = new ArrayList<>();
 
-        for (SseEmitter emitter : list) {
-            try {
-                emitter.send(SseEmitter.event().name("device-live").data(data));
-                System.out.println("********************************\n**************************\n*************************");
-            } catch (Exception e) {
-                deadEmitters.add(emitter);
+            for (SseEmitter emitter : list) {
+                try {
+                    emitter.send(SseEmitter.event().name("device-live").data(data));
+                } catch (Exception e) {
+                    deadEmitters.add(emitter);
+                }
             }
-        }
 
-        // Remove any dead connections
-        list.removeAll(deadEmitters);
+            // Remove any dead connections
+            if (!deadEmitters.isEmpty()) {
+                list.removeAll(deadEmitters);
+                if (list.isEmpty()) {
+                    emitters.remove(deviceId);
+                }
+            }
+        });
     }
 }
+

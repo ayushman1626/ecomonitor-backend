@@ -35,3 +35,7 @@ build/
 
 **/application-dev.properties
 **/application-h2.properties
+
+# GraphHopper cache and maps
+graphhopper-cache/
+map/

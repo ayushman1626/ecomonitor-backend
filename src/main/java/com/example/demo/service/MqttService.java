@@ -1,12 +1,11 @@
 package com.example.demo.service;
 
-
 import com.example.demo.model.Device;
 import com.example.demo.model.Dtos.SensorReadingDTO;
-import com.example.demo.model.SensorReading;
+import com.example.demo.model.Dtos.device.DeviceCacheDTO;
+import com.example.demo.model.Dtos.device.TelemetryQueueEvent;
 import com.example.demo.model.enums.DeviceType;
 import com.example.demo.repo.DeviceRepo;
-import com.example.demo.repo.SensorReadingRepo;
 import com.example.demo.utils.DeviceStreamManager;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,8 +20,6 @@ import java.util.UUID;
 
 @Service
 public class MqttService {
-    @Autowired
-    private SensorReadingRepo sensorDataRepo;
 
     @Autowired
     private DeviceRepo deviceRepo;
@@ -30,9 +27,11 @@ public class MqttService {
     @Autowired
     private DeviceStreamManager streamManager;
 
+    @Autowired
+    private RedisService redisService;
+
     private static final Logger logger = LoggerFactory.getLogger(MqttService.class);
-    //mosquitto_pub -t "reading/waste-level" -m "{\"sensor_id\":\"5fac3f05-4494-4e52-84a5-0a77f23a1c8d\",\"value\":86}"
-    //mosquitto_pub -h broker.hivemq.com -p 1883 -t reading/waste-level -m "{\"sensor_id\":\"5fac3f05-4494-4e52-84a5-0a77f23a1c8d\", \"value\":42}"
+
     public void handleIncomingData(String payload){
         try {
             // Parse the incoming JSON payload
@@ -46,10 +45,25 @@ public class MqttService {
 
             System.out.println("Received data for hardwareId: " + hardwareId + " with value1: " + value1 + " and value2 :" + value2 + " and battery: " + battery_status);
 
+            // Fetch device details from cache, fallback to database supplier
+            DeviceCacheDTO cachedDevice = redisService.getDevice(hardwareId, () -> {
+                Device deviceEntity = deviceRepo.findByHardwareId(hardwareId).orElse(null);
+                if (deviceEntity == null) {
+                    return null;
+                }
+                return DeviceCacheDTO.builder()
+                        .id(deviceEntity.getId())
+                        .hardwareId(deviceEntity.getHardwareId())
+                        .type(deviceEntity.getType())
+                        .build();
+            });
 
-            // Validate device ID and value and
-            Device device = deviceRepo.findByHardwareId(hardwareId)
-                    .orElseThrow(() -> new IllegalArgumentException("Device not found with hardware id: " + hardwareId));
+            if (cachedDevice == null) {
+                logger.error("Device not found with hardware id: {}", hardwareId);
+                throw new IllegalArgumentException("Device not found with hardware id: " + hardwareId);
+            }
+
+            // Validate values
             if (value1 == null || value1.compareTo(BigDecimal.ZERO) < 0 ) {
                 logger.error("Invalid sensor value1: {}", value1);
                 throw new IllegalArgumentException("Invalid sensor value: " + value1);
@@ -58,52 +72,39 @@ public class MqttService {
                 logger.error("Invalid sensor battery_status: {}", battery_status);
                 throw new IllegalArgumentException("Invalid sensor value: " + battery_status);
             }
-           //If the device is a smart bin, value2 must be non-negative and not null
-            if ( device.getType().compareTo(DeviceType.DUAL_BIN) == 0
+            // If the device is a dual bin, value2 must be non-negative and not null
+            if (cachedDevice.getType().compareTo(DeviceType.DUAL_BIN) == 0
                     && (value2 == null || value2.compareTo(BigDecimal.ZERO) < 0)){
                 logger.error("Invalid sensor value2: {}", value2);
                 throw new IllegalArgumentException("Invalid sensor value2: " + value2);
             }
 
+            LocalDateTime recordedAt = LocalDateTime.now();
 
-            // 1. Save to sensor_data
-            SensorReading data = SensorReading.builder()
+            // 1. Queue to Redis
+            TelemetryQueueEvent queueEvent = TelemetryQueueEvent.builder()
+                    .deviceId(cachedDevice.getId())
+                    .hardwareId(cachedDevice.getHardwareId())
                     .value1(value1)
                     .value2(value2)
                     .value3(battery_status)
-                    .sensor(device)
-                    .recordedAt(LocalDateTime.now())
+                    .recordedAt(recordedAt.toString())
                     .build();
-            sensorDataRepo.save(data);
-            logger.info("Sensor data saved: {}", data);
+            redisService.queueTelemetry(queueEvent);
+            logger.info("Telemetry event queued to Redis: {}", queueEvent);
 
-            // 2. Update last value in device and set active
-            device.setIsActive(true);
-            device.setLastValue1(value1);
-            if ( device.getType().compareTo(DeviceType.DUAL_BIN) == 0
-                    && value2 != null) {
-                device.setLastValue2(value2);
-            }
-            device.setBattery_status(battery_status);
-            device.setLastUpdated(LocalDateTime.now());
-            deviceRepo.save(device); // or load & save
-            logger.info("Device updated: {}", device);
-
-            // 3. Push to active SSE clients
+            // 2. Push to active SSE clients
             SensorReadingDTO dataDto = new SensorReadingDTO(
-                    device.getId().toString(),
-                    data.getValue1().toString(),
-                    data.getValue2() != null ? data.getValue2().toString() : null,
-                    data.getValue3().toString(),
-                    data.getRecordedAt().toString()
+                    cachedDevice.getId().toString(),
+                    value1.toString(),
+                    value2 != null ? value2.toString() : null,
+                    battery_status.toString(),
+                    recordedAt.toString()
             );
-            streamManager.broadcast(device.getId(), dataDto);
-            // ... rest of your logic
+            streamManager.broadcast(cachedDevice.getId(), dataDto);
+
         } catch (Exception e) {
-            logger.error("Failed to parse payload: {}", payload, e);
-            // Optionally, handle or rethrow
+            logger.error("Failed to process MQTT payload: {}", payload, e);
         }
     }
-
-
 }

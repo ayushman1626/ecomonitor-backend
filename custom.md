@@ -1,4 +1,4 @@
-it add# Configuration Files
+# Configuration Files
 
 ## MqttConfig.java
 
@@ -43,17 +43,34 @@ This class sets up application security using Spring Security and JWT.
 
 ```java
 @Bean
-public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http
-      .csrf().disable()
-      .cors().configurationSource(corsConfigurationSource())
-      .authorizeHttpRequests(auth -> auth
-        .requestMatchers("api/auth/**","hello","/swagger-ui/**").permitAll()
-        .anyRequest().authenticated()
-      )
-      .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-      .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+        .csrf(customizer -> customizer.disable())
+        .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+        .authorizeHttpRequests(request -> request
+            .requestMatchers("/api/auth/**", "/hello", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/**").permitAll()
+            .anyRequest().authenticated())
+        .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
     return http.build();
+}
+```
+
+---
+
+## WebSocketConfig.java
+
+Configures Spring STOMP messaging over WebSocket with JWT authentication in the inbound channel interceptor.
+
+- **configureMessageBroker**: Configures `/topic` prefix for simple broker and `/app` for application destinations.
+- **registerStompEndpoints**: Maps endpoint `/ws` with SockJS fallback.
+- **configureClientInboundChannel**: Extracts Bearer token from STOMP headers on `CONNECT` and registers authentication context.
+
+```java
+@Override
+public void configureMessageBroker(MessageBrokerRegistry config) {
+    config.enableSimpleBroker("/topic");
+    config.setApplicationDestinationPrefixes("/app");
 }
 ```
 
@@ -67,60 +84,22 @@ Manages granting, listing, and revoking user access to interfaces.
 
 ```java
 @RestController
-@Tag(name = "Access", description = "Manage interface access")
+@Tag(name = "Access", description = "API endpoint for Manage Access")
 public class AccessController {
-  @Autowired private AccessService accessService;
 ```
 
 ### Give Access
-
-```api
-{
-  "title": "Give Access",
-  "description": "Grant a user a role on an interface",
-  "method": "POST",
-  "baseUrl": "https://api.example.com",
-  "endpoint": "/api/interface/{interfaceId}/add-access",
-  "headers": [{"key":"Authorization","value":"Bearer <token>","required":true}],
-  "pathParams": [{"key":"interfaceId","value":"Interface UUID","required":true}],
-  "bodyType": "json",
-  "requestBody": "{\n  \"username\": \"jane\",\n  \"role\": \"ADMIN\"\n}",
-  "responses": {
-    "200": {"description":"Success","body":"{\"success\":true,\"message\":\"New user granted access as ADMIN\",\"data\":null}"},
-    "401": {"description":"Unauthorized"}
-  }
-}
-```
+- **Endpoint**: `POST /api/interface/{interfaceId}/add-access`
+- **Request Body**: `AddAccessRequestDTO`
+- **Response**: `ApiResponse<?>`
 
 ### Show Access
-
-```api
-{
-  "title": "List Interface Accesses",
-  "description": "Fetch all user roles for an interface",
-  "method": "GET",
-  "endpoint": "/api/interface/{interfaceId}/access",
-  "responses": {
-    "200": {"description":"Success","body":"{\"success\":true,\"message\":\"All access fetched successfully\",\"data\":[…]}"},
-    "403": {"description":"Forbidden"}
-  }
-}
-```
+- **Endpoint**: `GET /api/interface/{interfaceId}/access`
+- **Response**: `ApiResponse<List<InterfaceAccessDTO>>`
 
 ### Revoke Access
-
-```api
-{
-  "title": "Revoke Access",
-  "description": "Remove a user's role from an interface",
-  "method": "DELETE",
-  "endpoint": "/api/interface/{interfaceId}/access/{username}",
-  "responses": {
-    "200": {"description":"Success","body":"{\"success\":true,\"message\":\"Access removed successfully\",\"data\":null}"},
-    "403": {"description":"Forbidden"}
-  }
-}
-```
+- **Endpoint**: `DELETE /api/interface/{interfaceId}/access/{username}`
+- **Response**: `ApiResponse<?>`
 
 ---
 
@@ -131,121 +110,86 @@ Handles user registration, login, OTP verification, password reset, and Google O
 ```java
 @RequestMapping("api/auth")
 @RestController
-@Tag(name = "Auth", description = "Authentication endpoints")
+@Tag(name = "Auth", description = "API endpoints for auth")
 public class AuthController {
-  @Autowired private AuthService authService;
 ```
 
 ### Register User
-
-```api
-{
-  "title": "Register User",
-  "description": "Register new user and send verification OTP",
-  "method": "POST",
-  "endpoint": "/api/auth/register",
-  "bodyType": "json",
-  "requestBody": "{\n  \"email\":\"john@example.com\",\n  \"password\":\"pa$$w0rd\",\n  \"fullName\":\"John Doe\",\n  \"username\":\"john\"\n}",
-  "responses": {
-    "201": {"description":"Created","body":"{\"success\":true,\"message\":\"Registration successful. Verification email sent.\",\"data\":{\"email\":\"john@example.com\",\"otpExpiresInSeconds\":600}}"},
-    "409": {"description":"Conflict","body":"{\"success\":false,\"message\":\"User already exists\",\"data\":null}"}
-  }
-}
-```
+- **Endpoint**: `POST /api/auth/register`
+- **Request Body**: `RegisterRequest`
+- **Response**: `ApiResponse<Map<String, Object>>`
 
 ### Verify OTP
-
-```api
-{
-  "title": "Verify OTP",
-  "description": "Confirm email using OTP",
-  "method": "POST",
-  "endpoint": "/api/auth/register/verify-otp",
-  "requestBody": "{\n  \"email\":\"john@example.com\",\n  \"otp\":\"123456\"\n}",
-  "responses": {
-    "200": {"description":"Success","body":"{\"success\":true,\"message\":\"OTP verification successful\",\"data\":{\"email\":\"john@example.com\"}}"},
-    "400": {"description":"Bad Request"}
-  }
-}
-```
+- **Endpoint**: `POST /api/auth/register/verify-otp`
+- **Request Body**: `Map<String, String>`
+- **Response**: `ApiResponse<Map<String, Object>>`
 
 ### Resend OTP
-
-```api
-{
-  "title": "Resend OTP",
-  "description": "Send a new verification OTP",
-  "method": "POST",
-  "endpoint": "/api/auth/resend-otp",
-  "requestBody": "{ \"email\":\"john@example.com\" }",
-  "responses": {
-    "200": {"description":"Success","body":"{\"success\":true,\"message\":\"OTP sent to your email\",\"data\":{\"email\":\"john@example.com\"}}"}
-  }
-}
-```
+- **Endpoint**: `POST /api/auth/resend-otp`
+- **Request Body**: `Map<String, String>`
+- **Response**: `ApiResponse<Map<String, Object>>`
 
 ### Login
-
-```api
-{
-  "title": "User Login",
-  "description": "Authenticate user and receive JWT",
-  "method": "POST",
-  "endpoint": "/api/auth/login",
-  "requestBody": "{\n  \"email\":\"john@example.com\",\n  \"password\":\"pa$$w0rd\"\n}",
-  "responses": {
-    "200": {"description":"Success","body":"{\"success\":true,\"message\":\"Login successful\",\"data\":{\"token\":\"<jwt>\",…}}"},
-    "401": {"description":"Unauthorized"}
-  }
-}
-```
+- **Endpoint**: `POST /api/auth/login`
+- **Request Body**: `LoginRequest`
+- **Response**: `ApiResponse<Map<String, Object>>`
 
 ### Google Login
-
-```api
-{
-  "title": "Google OAuth Login",
-  "description": "Login via Google ID token",
-  "method": "POST",
-  "endpoint": "/api/auth/google-login",
-  "requestBody": "{ \"idToken\":\"<google-id-token>\" }",
-  "responses": {
-    "200": {"description":"Success","body":"{\"success\":true,\"message\":\"Google login successful\",\"data\":{\"token\":\"<jwt>\",…}}"},
-    "401": {"description":"Invalid token"}
-  }
-}
-```
+- **Endpoint**: `POST /api/auth/google-login`
+- **Header**: `Authorization: Bearer <google-id-token>`
+- **Response**: `ApiResponse<?>`
 
 ### Forget Password
-
-```api
-{
-  "title": "Forget Password",
-  "description": "Send OTP for password reset",
-  "method": "POST",
-  "endpoint": "/api/auth/forget-password",
-  "requestBody": "{ \"email\":\"john@example.com\" }",
-  "responses": {
-    "200": {"description":"OTP sent","body":"{\"success\":true,\"message\":\"OTP sent to your email\",\"data\":{\"email\":\"john@example.com\"}}"}
-  }
-}
-```
+- **Endpoint**: `POST /api/auth/forget-password`
+- **Request Body**: `Map<String, String>`
+- **Response**: `ApiResponse<Map<String, Object>>`
 
 ### Reset Password
+- **Endpoint**: `POST /api/auth/reset-password`
+- **Request Body**: `ResetPasswordRequest`
+- **Response**: `ApiResponse<ResetPasswordRequest>`
 
-```api
-{
-  "title": "Reset Password",
-  "description": "Reset password via OTP or old password",
-  "method": "POST",
-  "endpoint": "/api/auth/reset-password",
-  "requestBody": "{\n  \"email\":\"john@example.com\",\n  \"otp\":\"123456\",\n  \"newPassword\":\"newPa$$\",\n  \"oldPassword\":null\n}",
-  "responses": {
-    "200": {"description":"Success"},
-    "400": {"description":"Invalid OTP or old password"}
-  }
-}
+---
+
+## CollectionController.java
+
+Handles execution details of collection routes, worker actions, RFID scanning, stop validation, and audits.
+
+```java
+@RestController
+@RequestMapping("/api/routes")
+@Tag(name = "Collection", description = "API endpoints for waste collection routes operations and logs")
+public class CollectionController {
 ```
+
+### Assign Worker
+- **Endpoint**: `PUT /api/routes/{routeId}/assign`
+- **Request Body**: `AssignWorkerRequest`
+- **Response**: `ApiResponse<RouteResponseDto>`
+
+### Start Collection
+- **Endpoint**: `PUT /api/routes/{routeId}/start`
+- **Request Body**: `StartCollectionRequest`
+- **Response**: `ApiResponse<RouteResponseDto>`
+
+### Collect Stop (RFID scanned)
+- **Endpoint**: `PUT /api/routes/{routeId}/stops/{stopId}/collect`
+- **Request Body**: `CollectStopRequest`
+- **Response**: `ApiResponse<RouteStopDto>`
+
+### Skip Stop
+- **Endpoint**: `PUT /api/routes/{routeId}/stops/{stopId}/skip`
+- **Request Body**: `SkipStopRequest`
+- **Response**: `ApiResponse<RouteStopDto>`
+
+### Complete Route
+- **Endpoint**: `PUT /api/routes/{routeId}/complete`
+- **Request Body**: `CompleteRouteRequest`
+- **Response**: `ApiResponse<RouteResponseDto>`
+
+### Get Audit Logs
+- **Endpoint**: `GET /api/routes/{routeId}/audit-logs`
+- **Response**: `ApiResponse<List<CollectionLog>>`
 
 ---
 
@@ -256,209 +200,190 @@ CRUD and streaming for devices under a given interface.
 ```java
 @RequestMapping("api/device")
 @RestController
-@Tag(name = "Device", description = "Device management and data stream")
+@Tag(name = "Device", description = "API endpoints for Device")
 public class DeviceController {
-  @Autowired private DeviceService deviceService;
 ```
 
 ### Create Device
+- **Endpoint**: `POST /api/device/{interfaceId}`
+- **Request Body**: `DeviceRequestDTO`
+- **Response**: `ApiResponse<DeviceDTO>`
 
-```api
-{
-  "title": "Create Device",
-  "description": "Add a new device to an interface",
-  "method": "POST",
-  "endpoint": "/api/device/{interfaceId}",
-  "requestBody": "{\n  \"name\":\"Sensor1\",\n  \"type\":\"SMART_BIN\"\n}",
-  "responses": {
-    "201": {"description":"Created","body":"{\"success\":true,\"message\":\"Device created successfully\",\"data\":{…}}"},
-    "403": {"description":"Forbidden"}
-  }
-}
-```
+### Link Hardware Device
+- **Endpoint**: `POST /api/device/{deviceId}/link`
+- **Request Body**: `LinkRequestDto`
+- **Response**: `ApiResponse<String>`
 
-### List Devices
+### Get All Devices
+- **Endpoint**: `GET /api/device`
+- **Response**: `ApiResponse<List<DeviceDTO>>`
 
-```api
-{
-  "title": "List Devices",
-  "description": "Fetch all devices for all interfaces user has access to",
-  "method": "GET",
-  "endpoint": "/api/device",
-  "responses": {
-    "200": {"description":"Success","body":"{\"success\":true,\"message\":\"Devices fetched successfully\",\"data\":[…]}"},
-    "404": {"description":"No devices found"}
-  }
-}
-```
+### Get Device by ID
+- **Endpoint**: `GET /api/device/{deviceId}`
+- **Response**: `ApiResponse<DeviceDTO>`
 
 ### Get Device Readings
+- **Endpoint**: `GET /api/device/{deviceId}/readings`
+- **Response**: `ApiResponse<List<SensorReadingDTO>>`
 
-```api
-{
-  "title": "Get Device Readings",
-  "description": "Retrieve sensor readings for a device",
-  "method": "GET",
-  "endpoint": "/api/device/{deviceId}/readings",
-  "queryParams": [
-    {"key":"days","value":"Number of days back","required":false},
-    {"key":"hours","value":"Number of hours back","required":false}
-  ],
-  "responses": {
-    "200": {"description":"Success","body":"{\"success\":true,\"message\":\"Device readings fetched successfully\",\"data\":[…]}"},
-    "404": {"description":"No readings found"}
-  }
-}
-```
-
-### SSE Stream
-
-```api
-{
-  "title": "Stream Device Data",
-  "description": "Subscribe to live sensor updates",
-  "method": "GET",
-  "endpoint": "/api/device/{deviceId}/stream",
-  "headers": [{"key":"Accept","value":"text/event-stream","required":true}],
-  "responses": {
-    "200": {"description":"Stream starts"},
-    "401": {"description":"Unauthorized"}
-  }
-}
-```
+### Stream Device Data (SSE)
+- **Endpoint**: `GET /api/device/{deviceId}/stream`
+- **Response**: `SseEmitter` stream
 
 ### Delete Device
-
-```api
-{
-  "title": "Delete Device",
-  "description": "Remove a device",
-  "method": "DELETE",
-  "endpoint": "/api/device/{deviceId}",
-  "responses": {
-    "200": {"description":"Deleted","body":"{\"success\":true,\"message\":\"Device deleted successfully\",\"data\":null}"},
-    "403": {"description":"Forbidden"}
-  }
-}
-```
+- **Endpoint**: `DELETE /api/device/{deviceId}`
+- **Response**: `ApiResponse<String>`
 
 ---
 
 ## InterfaceController.java
 
-CRUD operations on interfaces, including cascading delete.
+CRUD operations on interfaces with password check on delete.
 
 ```java
 @RequestMapping("/api/interface")
 @RestController
-@Tag(name = "Interface", description = "Interface management")
+@Tag(name = "Interface", description = "API endpoints for Interface")
 public class InterfaceController {
-  @Autowired private InterfaceService interfaceService;
 ```
 
 ### Create Interface
+- **Endpoint**: `POST /api/interface`
+- **Request Body**: `InterfaceCreaterequestDto`
+- **Response**: `ApiResponse<InterfaceDTO>`
 
-```api
-{
-  "title": "Create Interface",
-  "description": "Define a new interface",
-  "method": "POST",
-  "endpoint": "/api/interface",
-  "requestBody": "{\n  \"name\":\"GreenBin\",\n  \"description\":\"Civic center bins\"\n}",
-  "responses": {
-    "200": {"description":"Created","body":"{\"success\":true,\"message\":\"Interface created successfully\",\"data\":{…}}"},
-    "401": {"description":"Unauthorized"}
-  }
-}
-```
-
-### List Interfaces
-
-```api
-{
-  "title": "List Interfaces",
-  "description": "Get interfaces accessible to user",
-  "method": "GET",
-  "endpoint": "/api/interface",
-  "responses": {
-    "200": {"description":"Success","body":"{\"success\":true,\"message\":\"Interfaces fetched successfully\",\"data\":[…]}"},
-    "404": {"description":"No Interfaces present"}
-  }
-}
-```
+### Get Interfaces
+- **Endpoint**: `GET /api/interface`
+- **Response**: `ApiResponse<List<InterfaceDTO>>`
 
 ### Get Interface By ID
-
-```api
-{
-  "title": "Get Interface By Id",
-  "description": "Fetch interface and its devices",
-  "method": "GET",
-  "endpoint": "/api/interface/{interface_id}",
-  "responses": {
-    "200": {"description":"Success","body":"{\"success\":true,\"message\":\"Interface fetched successfully\",\"data\":{…}}"}
-  }
-}
-```
+- **Endpoint**: `GET /api/interface/{interface_id}`
+- **Response**: `ApiResponse<?>`
 
 ### Delete Interface
+- **Endpoint**: `DELETE /api/interface/{interface_id}`
+- **Request Body**: `DeleteInterfaceRequest`
+- **Response**: `ApiResponse<Void>`
 
-```api
-{
-  "title": "Delete Interface",
-  "description": "Remove interface and its devices with password confirmation",
-  "method": "DELETE",
-  "endpoint": "/api/interface/{interface_id}",
-  "bodyType": "json",
-  "requestBody": "{ \"password\":\"pa$$w0rd\" }",
-  "responses": {
-    "200": {"description":"Deleted","body":"{\"success\":true,\"message\":\"Interface and devices deleted successfully\",\"data\":null}"}
-  }
-}
+---
+
+## RouteController.java
+
+Handles route creation, generation, and multi-route optimization with CVRP logic.
+
+```java
+@RestController
+@RequestMapping("/api/routes")
+@Tag(name = "Route", description = "API endpoints for route generation, optimization, and management")
+public class RouteController {
 ```
+
+### Optimize Route
+- **Endpoint**: `POST /api/routes/optimize`
+- **Request Body**: `RouteRequestDto`
+- **Response**: `ApiResponse<List<RouteResponseDto>>`
+
+### Get Route By ID
+- **Endpoint**: `GET /api/routes/{routeId}`
+- **Response**: `ApiResponse<RouteResponseDto>`
+
+### Get Routes By Interface ID
+- **Endpoint**: `GET /api/routes/interface/{interfaceId}`
+- **Response**: `ApiResponse<List<RouteResponseDto>>`
+
+### Get Completed Routes By Interface ID
+- **Endpoint**: `GET /api/routes/interface/{interfaceId}/completed`
+- **Response**: `ApiResponse<List<RouteResponseDto>>`
+
+### Get My Assigned Routes
+- **Endpoint**: `GET /api/routes/assigned`
+- **Response**: `ApiResponse<List<RouteResponseDto>>`
+
+### Delete Route
+- **Endpoint**: `DELETE /api/routes/{routeId}`
+- **Response**: `ApiResponse<Void>`
+
+---
+
+## TrackingController.java
+
+Ingests and retrieves GPS trail logs for active vehicles and routes.
+
+```java
+@RestController
+@RequestMapping("/api/tracking")
+@Tag(name = "Tracking", description = "API endpoints for vehicle/device tracking and logs")
+public class TrackingController {
+```
+
+### Update Location
+- **Endpoint**: `POST /api/tracking/location`
+- **Request Body**: `LocationUpdateRequest`
+- **Response**: `ApiResponse<String>` (triggers WebSocket broadcast to `/topic/tracking/{routeId}`)
+
+### Get Vehicle Logs
+- **Endpoint**: `GET /api/tracking/route/{routeId}/logs`
+- **Response**: `ApiResponse<List<VehicleLog>>`
 
 ---
 
 ## UserController.java
 
-User profile and search endpoints.
+User profile and user lookup operations.
 
 ```java
 @RestController
+@Tag(name = "User", description = "API endpoints for user profile management and search")
 public class UserController {
-  @Autowired private UserService userService;
 ```
 
-### Get My Profile
-
-```api
-{
-  "title": "Get User Profile",
-  "description": "Fetch authenticated user’s details",
-  "method": "GET",
-  "endpoint": "/api/users/me",
-  "responses": {
-    "200": {"description":"Success","body":"{…UserDTO…}"},
-    "401": {"description":"Unauthorized"}
-  }
-}
-```
+### Get Current User Profile
+- **Endpoint**: `GET /api/users/me`
+- **Response**: `UserDTO`
 
 ### Search Users
+- **Endpoint**: `GET /api/users/search`
+- **Query Parameters**: `q` or `query`
+- **Response**: `ApiResponse<List<UserDTO>>`
 
-```api
-{
-  "title": "Search Users",
-  "description": "Search verified users by username prefix",
-  "method": "GET",
-  "endpoint": "/api/users/search",
-  "queryParams": [{"key":"q","value":"prefix","required":true}],
-  "responses": {
-    "200": {"description":"Success","body":"{\"success\":true,\"message\":\"Users found\",\"data\":[…]}"},
-    "400": {"description":"Bad Request"}
-  }
-}
+### Hello Check
+- **Endpoint**: `GET /hello`
+- **Response**: `String`
+
+---
+
+## VehicleController.java
+
+Manages garbage collection vehicles/trucks and driver assignments.
+
+```java
+@RestController
+@RequestMapping("/api/vehicles")
+@Tag(name = "Vehicle", description = "API endpoints for vehicle management and driver assignment")
+public class VehicleController {
 ```
+
+### Create Vehicle
+- **Endpoint**: `POST /api/vehicles`
+- **Request Body**: `VehicleRequestDto`
+- **Response**: `ApiResponse<VehicleResponseDto>`
+
+### Get Vehicles By Interface
+- **Endpoint**: `GET /api/vehicles/interface/{interfaceId}`
+- **Response**: `ApiResponse<List<VehicleResponseDto>>`
+
+### Assign Driver
+- **Endpoint**: `PUT /api/vehicles/{vehicleId}/driver/{driverId}`
+- **Response**: `ApiResponse<VehicleResponseDto>`
+
+### Toggle Active Status
+- **Endpoint**: `PUT /api/vehicles/{vehicleId}/status`
+- **Query Parameter**: `isActive`
+- **Response**: `ApiResponse<VehicleResponseDto>`
+
+### Delete Vehicle
+- **Endpoint**: `DELETE /api/vehicles/{vehicleId}`
+- **Response**: `ApiResponse<Void>`
 
 ---
 
@@ -466,177 +391,71 @@ public class UserController {
 
 ## GlobalExceptionHandler.java
 
-Catches common exceptions across controllers, translating them into consistent `ApiResponse` payloads.
+Translates common runtime exceptions into structured `ApiResponse` JSON bodies with appropriate HTTP statuses.
 
-- Handles `EntityNotFoundException` → 404
-- Handles `AccessDeniedException` → 403
-- Handles `VerificationTokenExpiredException` → 400
-- Handles `UserAlreadyExistsException` → 409
-- Catches all other exceptions → 500
-
----
-
-## UserAlreadyExistsException.java
-
-Simple `RuntimeException` indicating duplicate user registration.
-
----
-
-## VerificationTokenExpiredException.java
-
-Signals that an OTP or email verification token has expired.
-
----
-
-# Security Filter
-
-## JwtFilter.java
-
-Intercepts requests (except Google login), extracts and validates JWT, and populates Spring Security context.
-
-- Skips filter on `/api/auth/google-login`.
-- Checks `Authorization: Bearer <token>`.
-- Uses `JwtUtil` to extract username and validate token.
-- Loads `UserDetails` via `MyUserDetailsService`.
-
----
-
-# Data Transfer Objects (DTOs)
-
-### Auth
-
-- **RegisterRequest**: `{ email, password, fullName, username }`
-- **RegistrationResponse**: `{ email, message, status }`
-- **LoginRequest**: `{ email, password }`
-- **LoginResponse**: `{ data: { token,… }, success, message }`
-- **ResetPasswordRequest**: `{ email, otp?, oldPassword?, newPassword }`
-
-### Access
-
-- **AddAccessRequestDTO**: `{ username, role }`
-- **InterfaceAccessDTO**: `{ userId, username, fullName, role }`
-
-### Common
-
-- **ApiResponse<T>**: `{ success, message, data:T }`
-
-### Device
-
-- **DeviceRequestDTO**: `{ name, type }`
-- **DeviceDTO**: `{ id, name, type, status, lastValue1, lastValue2,… }`
-
-### Interface
-
-- **InterfaceDTO**: `{ id, name, description, ownerId, ownerUsername }`
-- **InterfaceWithDevicesDTO**: extends `InterfaceDTO` with `devices: List<DeviceDTO>`
-
-### Sensor
-
-- **SensorReadingDTO**: `{ deviceId, value1, value2, timestamp }`
-
-### User
-
-- **UserDTO**: `{ id, fullName, email, username, createdAt }`
-
----
-
-# Enumerations
-
-- **Role**: `OWNER`, `ADMIN`, `USER`
-- **DeviceType**: `SMART_BIN`, `SMART_WATER`, etc.
-- **DeviceStatus**: enum for active/inactive.
-- **SensorReadingStatus**: for reading health.
+- `EntityNotFoundException` -> `404 NOT FOUND`
+- `AccessDeniedException` -> `403 FORBIDDEN`
+- `VerificationTokenExpiredException` -> `400 BAD REQUEST`
+- `UserAlreadyExistsException` -> `409 CONFLICT`
 
 ---
 
 # Persistence Models
 
-- **User**: Core user entity with OTP, verification flags.
-- **Interface**: Grouping of devices, owned by a user.
-- **Device**: IoT endpoint with last readings and status.
-- **SensorReading**: Historical data points for a device.
-- **UserInterface**: Join entity linking users to interfaces with roles.
-- **UserInterfaceId**: Composite key for `UserInterface`.
-- **UserPrinciple**: Adapter from `User` to Spring Security’s `UserDetails`.
+- **User**: User records with credentials, role mapping, and verification flags.
+- **Interface**: Collection of IoT devices.
+- **Device**: IoT hardware device reporting metrics.
+- **SensorReading**: Logs recorded from devices.
+- **UserInterface**: Joins User and Interface with a specific role status.
+- **Route**: Representation of a planned or completed waste collection trip.
+- **RouteStop**: Individual stop points (Device bins) assigned on a route.
+- **Vehicle**: Truck assigned to collection routes.
+- **CollectionLog**: Immutable audit logs of worker actions on a route (Route Started, Collected, Skipped, etc.).
+- **VehicleLog**: Periodic GPS trail of vehicles during active routing.
 
 ---
 
 # Spring Data Repositories
 
-- **UserRepo**: CRUD on `User` + find by email/username, OTP management.
-- **InterfaceRepo**: CRUD on `Interface`.
-- **DeviceRepo**: Query by interface, status, lastUpdated.
-- **SensorReadingRepo**: Custom query by date.
-- **UserInterfaceRepo**: Manage user-interface relationships.
+- **UserRepo**: CRUD operations on User.
+- **InterfaceRepo**: CRUD operations on Interface.
+- **DeviceRepo**: Operations on Device.
+- **SensorReadingRepo**: Operations on SensorReading.
+- **UserInterfaceRepo**: Coordinates interface access controls.
+- **RouteRepository**: Core CRUD and status queries for routes.
+- **RouteStopRepository**: Sequence queries for stops on a route.
+- **VehicleRepository**: Vehicle lookups by interface and driver.
+- **CollectionLogRepository**: Read audit trail records.
+- **VehicleLogRepository**: Retrieves GPS points per vehicle.
 
 ---
 
 # Services
 
-- **AuthService**: Business logic for registration, OTP, login.
-- **UserService**: Profile fetching, search, cleanup of unverified users.
-- **OtpService**: Generate, verify, resend OTP via `EmailService`.
-- **EmailService**: Sends HTML emails via `JavaMailSender`.
-- **GoogleVerifierService**: Validates Google ID tokens.
-- **MyUserDetailsService**: Loads verified users for Spring Security.
-- **AccessService**: Grant/revoke/list interface access.
-- **InterfaceService**: CRUD and cascade delete.
-- **DeviceService**: CRUD, reading retrieval, deletion.
-- **MqttService**: Processes incoming MQTT payloads.
-- **MqttStatusService**: Reports MQTT connection status.
+- **AuthService**: Handles registration, verification, password resetting, and login.
+- **UserService**: Performs profile and user lookup operations.
+- **OtpService**: Manages user email OTP codes.
+- **EmailService**: Sends system mail notifications.
+- **GoogleVerifierService**: Decodes Google ID login payloads.
+- **MyUserDetailsService**: Custom authentication provider context adapter.
+- **AccessService**: Implements access controls on interfaces.
+- **InterfaceService**: Performs interface creations and cascades.
+- **DeviceService**: Operations on devices, including hardware linking.
+- **MqttService**: Resolves telemetry updates from devices.
+- **CollectionService**: Manages route assignment and lifecycle modifications (start, collect, skip, complete).
+- **RouteService**: Main orchestrator of routing calculations.
+- **VehicleService**: Handles vehicle registry and driver linking.
+- **TrackingService**: Logs locations and pushes real-time WebSocket telemetry updates.
+- **RoutingService**: Connects to the GraphHopper library or falls back to Haversine calculations.
+- **CvrpSolverService**: Runs Google OR-Tools CVRP solver on available vehicles and bin fill levels.
 
 ---
 
 # Utilities
 
-## DeviceStreamManager.java
-
-Manages SSE emitters per device, broadcasting new readings to connected clients.
-
-## JwtUtil.java
-
-Generates and validates JWTs, extracts claims.
-
-## ScheduledTaskManager.java
-
-- Marks devices offline if no update within 1 minute.
-- Removes unverified users daily at midnight.
-
----
-
-# Application & Infrastructure
-
-## ProjectXBackendApplication.java
-
-Bootstraps Spring Boot with scheduling enabled and logs environment variables on startup.
-
-## application.properties
-
-Defines server port, Hibernate, MQTT topics, JWT secrets, mail settings, active profile.
-
-## application-prod.properties
-
-Overrides DB and mail credentials via environment variables and configures production settings.
-
----
-
-# Testing
-
-## ProjectXBackendApplicationTests.java
-
-Basic context load test to ensure Spring Boot application context starts.
-
----
-
-# Project Metadata
-
-## README.md
-
-Overview of the **EcoMonitor** system, its features, tech stack, and IoT hardware.
-
-## pom.xml
-
-Maven configuration with dependencies for Spring Boot, Spring Security, MQTT, Jackson, Lombok, Google API client, OpenAPI, etc.
+- **DeviceStreamManager**: Handles active SSE connections.
+- **JwtUtil**: Generates and parses JWT payloads.
+- **ScheduledTaskManager**: Regularly handles offline device marking and temporary unverified user sweeps.
 
 ---
 
@@ -648,7 +467,12 @@ flowchart TD
     InterfaceController --> InterfaceService
     DeviceController --> DeviceService
     AccessController --> AccessService
+    RouteController --> RouteService
+    CollectionController --> CollectionService
+    TrackingController --> TrackingService
+    VehicleController --> VehicleService
   end
+  
   subgraph Service Layer
     AuthService --> OtpService --> EmailService
     AuthService --> UserRepo
@@ -656,19 +480,29 @@ flowchart TD
     InterfaceService --> InterfaceRepo & UserInterfaceRepo
     DeviceService --> DeviceRepo & SensorReadingRepo
     AccessService --> UserInterfaceRepo & UserRepo
+    CollectionService --> RouteRepository & RouteStopRepository & CollectionLogRepository
+    RouteService --> VehicleRepository & RoutingService & CvrpSolverService & GoogleMapsService
+    VehicleService --> VehicleRepository
+    TrackingService --> VehicleLogRepository
     MqttService --> DeviceRepo & SensorReadingRepo & DeviceStreamManager
   end
+  
   subgraph Persistence Layer
     UserRepo
     InterfaceRepo
     DeviceRepo
     SensorReadingRepo
     UserInterfaceRepo
+    RouteRepository
+    RouteStopRepository
+    VehicleRepository
+    CollectionLogRepository
+    VehicleLogRepository
   end
+  
   MqttConfig --> MqttService
+  WebSocketConfig --> TrackingService
   SecurityConfig --> JwtFilter --> MyUserDetailsService
   ScheduledTaskManager --> DeviceRepo & UserService
   DeviceStreamManager --> SSE Clients
 ```
-
-*This documentation captures the purpose and interplay of each file in the project.*

@@ -6,6 +6,7 @@ import com.example.demo.model.Dtos.common.ApiResponse;
 import com.example.demo.model.UserPrinciple;
 import com.example.demo.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,12 +19,14 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
+@Tag(name = "User", description = "API endpoints for user profile management and search")
 public class UserController {
 
     @Autowired
     UserService userService;
 
     @GetMapping("api/users/me")
+    @Operation(summary = "Get currently authenticated user profile")
     public ResponseEntity<?> getUserProfile(@AuthenticationPrincipal UserPrinciple userPrinciple){
         if(userPrinciple == null){
             return new ResponseEntity<>("UNAUTHORIZED USER!!", HttpStatus.UNAUTHORIZED);
@@ -62,6 +65,7 @@ public class UserController {
     }
 
     @GetMapping("hello")
+    @Operation(summary = "Health check endpoint")
     public ResponseEntity<String> helloWorld(){
         return ResponseEntity.ok("Hello App is running ");
     }

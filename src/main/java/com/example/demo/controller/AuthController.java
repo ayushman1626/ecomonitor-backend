@@ -143,6 +143,7 @@ public class AuthController {
 
     //Google Login
     @PostMapping("/google-login")
+    @Operation(summary = "Authenticate or register with Google OAuth2")
     public ResponseEntity<ApiResponse<?>> googleLogin(@RequestHeader("Authorization") String authorizationHeader) {
         // Extract the token from "Bearer <token>"
         String googleIdToken = authorizationHeader.replace("Bearer ", "");

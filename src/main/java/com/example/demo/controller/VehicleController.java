@@ -5,6 +5,8 @@ import com.example.demo.model.Dtos.vehicle.VehicleRequestDto;
 import com.example.demo.model.Dtos.vehicle.VehicleResponseDto;
 import com.example.demo.model.UserPrinciple;
 import com.example.demo.service.VehicleService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -17,12 +19,14 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/vehicles")
+@Tag(name = "Vehicle", description = "API endpoints for vehicle management and driver assignment")
 public class VehicleController {
 
     @Autowired
     private VehicleService vehicleService;
 
     @PostMapping
+    @Operation(summary = "Create a new vehicle")
     public ResponseEntity<ApiResponse<VehicleResponseDto>> createVehicle(
             @Valid @RequestBody VehicleRequestDto request,
             @AuthenticationPrincipal UserPrinciple userPrinciple) {
@@ -37,6 +41,7 @@ public class VehicleController {
     }
 
     @GetMapping("/interface/{interfaceId}")
+    @Operation(summary = "Get all vehicles associated with an interface")
     public ResponseEntity<ApiResponse<List<VehicleResponseDto>>> getVehiclesByInterface(
             @PathVariable UUID interfaceId,
             @AuthenticationPrincipal UserPrinciple userPrinciple) {
@@ -51,6 +56,7 @@ public class VehicleController {
     }
 
     @PutMapping("/{vehicleId}/driver/{driverId}")
+    @Operation(summary = "Assign a driver to a vehicle")
     public ResponseEntity<ApiResponse<VehicleResponseDto>> assignDriver(
             @PathVariable UUID vehicleId,
             @PathVariable UUID driverId,
@@ -66,6 +72,7 @@ public class VehicleController {
     }
 
     @PutMapping("/{vehicleId}/status")
+    @Operation(summary = "Toggle active/inactive status of a vehicle")
     public ResponseEntity<ApiResponse<VehicleResponseDto>> toggleActiveStatus(
             @PathVariable UUID vehicleId,
             @RequestParam boolean isActive,
@@ -81,6 +88,7 @@ public class VehicleController {
     }
 
     @DeleteMapping("/{vehicleId}")
+    @Operation(summary = "Delete a vehicle")
     public ResponseEntity<ApiResponse<Void>> deleteVehicle(
             @PathVariable UUID vehicleId,
             @AuthenticationPrincipal UserPrinciple userPrinciple) {

@@ -1,13 +1,13 @@
 # EcoMonitor — Backend Specification
 
-> **Target**: Spring Boot backend (Java 17+, PostgreSQL, Spring Security + JWT)
-> **Purpose**: Standalone spec for an agent to implement all route collection, tracking, and RFID features.
+> **Target**: Spring Boot backend (Java 21, PostgreSQL, Spring Security + JWT)
+> **Purpose**: System specifications for EcoMonitor backend features (route collection, tracking, RFID, etc.), all of which are fully implemented.
 
 ---
 
 ## Existing Context
 
-The backend already has these working modules:
+The backend has the following fully implemented and operational modules:
 
 - **Auth**: Register, Login, OTP, Google OAuth, Password Reset (JWT-based)
 - **Users**: Profile, Search
@@ -15,7 +15,9 @@ The backend already has these working modules:
 - **Devices**: CRUD, SSE streaming, sensor readings (types: `SINGLE_BIN`, `DUAL_BIN`)
 - **Access Control**: Grant/revoke user roles (`OWNER`, `ADMIN`, `USER`) per interface
 - **MQTT**: Ingests IoT sensor data from bins
-- **Route Optimization**: `POST /api/routes/optimize` exists and returns optimized routes via Google Directions API
+- **Route Optimization & Management**: Generates CVRP optimized collection routes via local GraphHopper engine (backed by OR-Tools) or Haversine routing.
+- **Collection execution & RFID verification**: Assign workers, start routes, collect/skip stops, verify bins using RFID, and complete routes.
+- **Tracking & WebSockets**: Ingest and stream vehicle location updates in real-time.
 
 ### Existing Route Endpoints (already implemented)
 

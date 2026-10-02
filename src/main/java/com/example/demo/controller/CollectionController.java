@@ -7,6 +7,8 @@ import com.example.demo.model.Dtos.route.RouteResponseDto;
 import com.example.demo.model.Dtos.route.RouteStopDto;
 import com.example.demo.repo.UserRepo;
 import com.example.demo.service.CollectionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,12 +21,14 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/routes")
 @RequiredArgsConstructor
+@Tag(name = "Collection", description = "API endpoints for waste collection routes operations and logs")
 public class CollectionController {
 
     private final CollectionService collectionService;
     private final UserRepo userRepository;
 
     @PutMapping("/{routeId}/assign")
+    @Operation(summary = "Assign a worker to a route")
     public ResponseEntity<ApiResponse<RouteResponseDto>> assignWorker(
             @PathVariable UUID routeId,
             @RequestBody AssignWorkerRequest request,
@@ -39,6 +43,7 @@ public class CollectionController {
     }
 
     @PutMapping("/{routeId}/start")
+    @Operation(summary = "Start collection for a route")
     public ResponseEntity<ApiResponse<RouteResponseDto>> startCollection(
             @PathVariable UUID routeId,
             @Valid @RequestBody StartCollectionRequest request,
@@ -54,6 +59,7 @@ public class CollectionController {
     }
 
     @PutMapping("/{routeId}/stops/{stopId}/collect")
+    @Operation(summary = "Record collection at a stop")
     public ResponseEntity<ApiResponse<RouteStopDto>> collectStop(
             @PathVariable UUID routeId,
             @PathVariable UUID stopId,
@@ -70,6 +76,7 @@ public class CollectionController {
     }
 
     @PutMapping("/{routeId}/stops/{stopId}/skip")
+    @Operation(summary = "Skip a collection stop")
     public ResponseEntity<ApiResponse<RouteStopDto>> skipStop(
             @PathVariable UUID routeId,
             @PathVariable UUID stopId,
@@ -86,6 +93,7 @@ public class CollectionController {
     }
 
     @PutMapping("/{routeId}/complete")
+    @Operation(summary = "Complete a collection route")
     public ResponseEntity<ApiResponse<RouteResponseDto>> completeRoute(
             @PathVariable UUID routeId,
             @Valid @RequestBody CompleteRouteRequest request,
@@ -101,6 +109,7 @@ public class CollectionController {
     }
 
     @GetMapping("/{routeId}/audit-logs")
+    @Operation(summary = "Get audit logs for a route")
     public ResponseEntity<ApiResponse<List<CollectionLog>>> getAuditLogs(
             @PathVariable UUID routeId,
             @AuthenticationPrincipal UserPrinciple userPrinciple) {
